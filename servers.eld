@@ -198,6 +198,7 @@
 
  ;; Java
  (jdtls
+  :installer binary
   :download-url "https://download.eclipse.org/jdtls/snapshots/jdt-language-server-latest.tar.gz"
   :decompress tar.gz
   :executable-name "bin/jdtls"
@@ -298,7 +299,7 @@
   :modes (yaml-ts-mode yaml-mode)
   :args ("--stdio"))
 
- ;; Nix
+ ;; nix
  (nil
   :download-url "https://github.com/oxalica/nil/releases/latest/download/nil-{arch}-unknown-{system}-musl"
   :executable-name "nil"

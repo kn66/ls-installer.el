@@ -77,7 +77,7 @@
       (message "Failed to process %s: %s"
                ,server-name
                (error-message-string err))
-      nil)))
+      (signal (car err) (cdr err)))))
 
 (defmacro lsp-installer--define-installer
     (name args docstring &rest body)
@@ -88,8 +88,7 @@ Automatically handles common error patterns and directory creation."
          (intern (format "lsp-installer--install-via-%s" name))))
     `(defun ,func-name ,args
        ,docstring
-       (lsp-installer--with-error-handling ,(car args)
-         ,@body))))
+       ,@body)))
 
 (defun lsp-installer--ensure-directory (dir)
   "Ensure DIR exists."
@@ -97,24 +96,86 @@ Automatically handles common error patterns and directory creation."
     (make-directory dir t)))
 
 (defun lsp-installer--system-info ()
-  "Return system information as a plist."
-  (list
-   :system
-   (pcase system-type
-     ('darwin 'macos)
-     ('windows-nt 'windows)
-     ('gnu/linux 'linux)
-     (_ 'unix))
-   :arch
-   (pcase system-configuration
-     ((pred (string-match-p "x86_64")) 'x86_64)
-     ((pred (string-match-p "aarch64\\|arm64")) 'arm64)
-     ((pred (string-match-p "i[3-6]86")) 'x86)
-     (_ 'unknown))
-   :exe-suffix
-   (if (eq system-type 'windows-nt)
-       ".exe"
-     "")))
+  "Return enhanced system information as a plist."
+  (let* ((system-type-mapped
+          (pcase system-type
+            ('darwin 'macos)
+            ('windows-nt 'windows)
+            ('gnu/linux 'linux)
+            (_ 'unix)))
+         (arch-mapped
+          (pcase system-configuration
+            ((pred (string-match-p "x86_64")) 'x86_64)
+            ((pred (string-match-p "aarch64\\|arm64")) 'arm64)
+            ((pred (string-match-p "i[3-6]86")) 'x86)
+            (_ 'unknown))))
+    (list
+     :system system-type-mapped
+     :arch arch-mapped
+     :exe-suffix
+     (if (eq system-type 'windows-nt)
+         ".exe"
+       "")
+     ;; Special mapping for URLs
+     :system-url
+     (pcase system-type-mapped
+       ('macos "apple-darwin")
+       ('linux "unknown-linux-gnu")
+       ('windows "pc-windows-msvc")
+       (_ (symbol-name system-type-mapped)))
+     :arch-url
+     (pcase arch-mapped
+       ('x86_64 "x86_64")
+       ('arm64 "aarch64")
+       (_ (symbol-name arch-mapped))))))
+
+(defun lsp-installer--setup-jdtls (exe-file config)
+  "Setup JDTLS after installation - now properly integrated."
+  (let* ((jdtls-bin-dir (file-name-directory exe-file))
+         ;; 修正: 親ディレクトリを正しく取得
+         (jdtls-root-dir (file-name-directory (directory-file-name jdtls-bin-dir)))
+         (system-info (lsp-installer--system-info))
+         (system-type (plist-get system-info :system))
+         (config-dir
+          (pcase system-type
+            ('linux "config_linux")
+            ('macos "config_mac")
+            ('windows "config_win")
+            (_ "config_linux")))
+         ;; jdtlsルートディレクトリ直下のpluginsディレクトリを指定
+         (plugins-dir (expand-file-name "plugins" jdtls-root-dir)))
+
+    (message "exe-file: %s" exe-file)
+    (message "jdtls-bin-dir: %s" jdtls-bin-dir)
+    (message "jdtls-root-dir: %s" jdtls-root-dir)
+    (message "plugins-dir: %s" plugins-dir)
+    
+    ;; Make the startup script executable
+    (lsp-installer--make-executable exe-file)
+
+    ;; Check for the existence of the plugins directory
+    (unless (file-directory-p plugins-dir)
+      (error "JDTLS plugins directory not found: %s" plugins-dir))
+
+    ;; Create a platform-specific wrapper script
+    (let ((wrapper-script (expand-file-name "jdtls" jdtls-bin-dir))
+          (launcher-jar
+           (car
+            (directory-files
+             plugins-dir
+             t "org\\.eclipse\\.equinox\\.launcher_.*\\.jar$"))))
+      (unless launcher-jar
+        (error "JDTLS launcher jar not found in %s" plugins-dir))
+
+      (with-temp-file wrapper-script
+        (insert "#!/bin/bash\n")
+        (insert
+         (format
+          "exec java -jar %s -configuration %s/%s -data \"$@\"\n"
+          launcher-jar 
+          jdtls-root-dir
+          config-dir)))
+      (lsp-installer--make-executable wrapper-script))))
 
 (defun lsp-installer--expand-template (template server-config)
   "Expand TEMPLATE with values from SERVER-CONFIG and system info."
@@ -133,11 +194,12 @@ Automatically handles common error patterns and directory creation."
 
 (defun lsp-installer--add-to-exec-path (directory)
   "Add DIRECTORY to exec-path if not already present."
-  (let ((normalized-dir (file-truename directory)))
-    (unless (member normalized-dir exec-path)
-      (add-to-list 'exec-path normalized-dir)
-      (add-to-list 'lsp-installer--added-paths normalized-dir)
-      (message "Added %s to exec-path" normalized-dir))))
+  (when (file-directory-p directory)
+    (let ((normalized-dir (file-truename directory)))
+      (unless (member normalized-dir exec-path)
+        (add-to-list 'exec-path normalized-dir)
+        (add-to-list 'lsp-installer--added-paths normalized-dir)
+        (message "Added %s to exec-path" normalized-dir)))))
 
 (defun lsp-installer--get-bin-directory (server-name installer)
   "Get the bin directory for SERVER-NAME based on INSTALLER type."
@@ -146,18 +208,30 @@ Automatically handles common error patterns and directory creation."
                            lsp-installer-dir)))
     (pcase installer
       ('npm (expand-file-name "node_modules/.bin" base-dir))
-      ((or 'cargo 'go 'gem 'dotnet) (expand-file-name "bin" base-dir))
+      ((or 'cargo 'go 'gem 'dotnet 'coursier 'cabal)
+       (expand-file-name "bin" base-dir))
+      ('composer (expand-file-name "vendor/bin" base-dir))
+      ('luarocks (expand-file-name "bin" base-dir))
+      ('nimble (expand-file-name "bin" base-dir))
+      ('opam (expand-file-name "bin" base-dir))
       ('pip base-dir)
+      ('binary base-dir)
       (_ base-dir))))
 
 ;;; Server definition management
 
 (defun lsp-installer--load-servers ()
   "Load server definitions from ELD file."
-  (when (file-exists-p lsp-installer--servers-file)
-    (with-temp-buffer
-      (insert-file-contents lsp-installer--servers-file)
-      (read (current-buffer)))))
+  (when (and lsp-installer--servers-file
+             (file-exists-p lsp-installer--servers-file))
+    (condition-case err
+        (with-temp-buffer
+          (insert-file-contents lsp-installer--servers-file)
+          (read (current-buffer)))
+      (error
+       (message "Warning: Failed to load server definitions: %s"
+                (error-message-string err))
+       nil))))
 
 (defun lsp-installer--get-servers ()
   "Get server definitions, loading if necessary."
@@ -208,35 +282,71 @@ Automatically handles common error patterns and directory creation."
 
 ;;; Download and decompression utilities
 
+(defmacro lsp-installer--with-cleanup (cleanup-form &rest body)
+  "Execute BODY with CLEANUP-FORM executed even if error occurs."
+  (declare (indent 1))
+  (let ((success-var (gensym "success")))
+    `(let ((,success-var nil))
+       (unwind-protect
+           (prog1 (progn
+                    ,@body)
+             (setq ,success-var t))
+         (unless ,success-var
+           ,cleanup-form)))))
+
 (defun lsp-installer--download-file (url dest-file)
-  "Download URL to DEST-FILE."
-  (let ((buffer (url-retrieve-synchronously url t t)))
-    (when buffer
-      (unwind-protect
-          (with-current-buffer buffer
-            (goto-char (point-min))
-            (re-search-forward "^\r?$")
-            (delete-region (point-min) (point))
-            (let ((coding-system-for-write 'binary))
-              (write-region (point) (point-max) dest-file)))
-        (kill-buffer buffer)))))
+  "Download URL to DEST-FILE using Emacs's url-copy-file (handles redirects robustly)."
+  (lsp-installer--with-cleanup (when (file-exists-p dest-file)
+                                 (delete-file dest-file))
+                               (url-copy-file url dest-file t)))
 
 (defun lsp-installer--decompress-file (file dest-dir method)
   "Decompress FILE to DEST-DIR using METHOD."
+  (unless (file-exists-p file)
+    (error "File does not exist: %s" file))
+  (lsp-installer--ensure-directory dest-dir)
   (pcase method
     ('gzip
      (let ((dest-file
             (expand-file-name (file-name-sans-extension
                                (file-name-nondirectory file))
                               dest-dir)))
-       (with-temp-file dest-file
-         (call-process "gunzip" file t nil "-c"))
+       (unless (zerop (call-process "gunzip" file t nil "-c"))
+         (error "Failed to decompress gzip file: %s" file))
        dest-file))
-    ('zip (call-process "unzip" nil nil nil "-q" file "-d" dest-dir))
+    ('zip
+     (unless (zerop
+              (call-process "unzip"
+                            nil
+                            nil
+                            nil
+                            "-q"
+                            file
+                            "-d"
+                            dest-dir))
+       (error "Failed to decompress zip file: %s" file)))
     ('tar.gz
-     (call-process "tar" nil nil nil "-xzf" file "-C" dest-dir))
+     (unless (zerop
+              (call-process "tar"
+                            nil
+                            nil
+                            nil
+                            "-xzf"
+                            file
+                            "-C"
+                            dest-dir))
+       (error "Failed to decompress tar.gz file: %s" file)))
     ('tar.xz
-     (call-process "tar" nil nil nil "-xJf" file "-C" dest-dir))
+     (unless (zerop
+              (call-process "tar"
+                            nil
+                            nil
+                            nil
+                            "-xJf"
+                            file
+                            "-C"
+                            dest-dir))
+       (error "Failed to decompress tar.xz file: %s" file)))
     (_ (error "Unsupported compression method: %s" method))))
 
 (defun lsp-installer--make-executable (file)
@@ -249,13 +359,13 @@ Automatically handles common error patterns and directory creation."
 (lsp-installer--define-installer npm
     (package-name dest-dir &optional executable-name)
     "Install PACKAGE-NAME via npm to DEST-DIR."
-  (let ((default-directory dest-dir))
+  (let ((default-directory dest-dir)
+        (bin-dir (expand-file-name "node_modules/.bin" dest-dir)))
     (lsp-installer--ensure-directory dest-dir)
     (unless (zerop
              (call-process "npm" nil nil nil "install" package-name))
       (error "Failed to install %s via npm" package-name))
-    (lsp-installer--get-bin-directory
-     (intern (file-name-nondirectory dest-dir)) 'npm)))
+    bin-dir))
 
 (lsp-installer--define-installer cargo (package-name dest-dir)
                                  "Install PACKAGE-NAME via cargo to DEST-DIR."
@@ -335,7 +445,104 @@ Automatically handles common error patterns and directory creation."
        "Failed to install %s via dotnet tool install" package-name))
     bin-dir))
 
-;;; Binary installer
+(lsp-installer--define-installer composer (package-name dest-dir)
+                                 "Install PACKAGE-NAME via composer to DEST-DIR."
+  (let ((bin-dir (expand-file-name "vendor/bin" dest-dir)))
+    (lsp-installer--ensure-directory dest-dir)
+    (let ((default-directory dest-dir))
+      (unless (zerop
+               (call-process "composer"
+                             nil
+                             nil
+                             nil
+                             "require"
+                             package-name))
+        (error "Failed to install %s via composer" package-name)))
+    bin-dir))
+
+(lsp-installer--define-installer coursier (package-name dest-dir)
+                                 "Install PACKAGE-NAME via coursier to DEST-DIR."
+  (let ((bin-dir (expand-file-name "bin" dest-dir)))
+    (lsp-installer--ensure-directory bin-dir)
+    (unless (zerop
+             (call-process "coursier"
+                           nil
+                           nil
+                           nil
+                           "install"
+                           "--install-dir"
+                           bin-dir
+                           package-name))
+      (error "Failed to install %s via coursier" package-name))
+    bin-dir))
+
+(lsp-installer--define-installer luarocks (package-name dest-dir)
+                                 "Install PACKAGE-NAME via luarocks to DEST-DIR."
+  (let ((bin-dir (expand-file-name "bin" dest-dir)))
+    (lsp-installer--ensure-directory dest-dir)
+    (unless (zerop
+             (call-process "luarocks"
+                           nil
+                           nil
+                           nil
+                           "install"
+                           "--tree"
+                           dest-dir
+                           package-name))
+      (error "Failed to install %s via luarocks" package-name))
+    bin-dir))
+
+(lsp-installer--define-installer nimble (package-name dest-dir)
+                                 "Install PACKAGE-NAME via nimble to DEST-DIR."
+  (let ((bin-dir (expand-file-name "bin" dest-dir)))
+    (lsp-installer--ensure-directory bin-dir)
+    (let ((process-environment
+           (cons
+            (format "NIMBLE_DIR=%s" dest-dir) process-environment)))
+      (unless (zerop
+               (call-process "nimble"
+                             nil
+                             nil
+                             nil
+                             "install"
+                             "--accept"
+                             package-name))
+        (error "Failed to install %s via nimble" package-name)))
+    bin-dir))
+
+(lsp-installer--define-installer opam (package-name dest-dir)
+                                 "Install PACKAGE-NAME via opam to DEST-DIR."
+  (let ((bin-dir (expand-file-name "bin" dest-dir)))
+    (lsp-installer--ensure-directory dest-dir)
+    (unless (zerop
+             (call-process "opam"
+                           nil
+                           nil
+                           nil
+                           "install"
+                           "--destdir"
+                           dest-dir
+                           package-name))
+      (error "Failed to install %s via opam" package-name))
+    bin-dir))
+
+(lsp-installer--define-installer cabal (package-name dest-dir)
+                                 "Install PACKAGE-NAME via cabal to DEST-DIR."
+  (let ((bin-dir (expand-file-name "bin" dest-dir)))
+    (lsp-installer--ensure-directory bin-dir)
+    (unless (zerop
+             (call-process "cabal"
+                           nil
+                           nil
+                           nil
+                           "install"
+                           "--installdir"
+                           bin-dir
+                           package-name))
+      (error "Failed to install %s via cabal" package-name))
+    bin-dir))
+
+;;; Binary installer - 修正：適切なbin-directory戻り値
 
 (defun lsp-installer--install-binary (server-name config)
   "Install binary for SERVER-NAME using CONFIG."
@@ -370,11 +577,25 @@ Automatically handles common error patterns and directory creation."
     (lsp-installer--make-executable exe-file)
 
     (when-let ((hook (plist-get config :post-install-hook)))
-      (funcall hook exe-file config))
+      (cond
+       ((eq hook 'jdtls-setup)
+        (lsp-installer--setup-jdtls exe-file config))
+       ((functionp hook)
+        (funcall hook exe-file config))
+       (t
+        (message "Warning: Unknown post-install-hook: %s" hook))))
 
-    dest-dir))
+    (lsp-installer--get-bin-directory server-name 'binary)))
 
 ;;; Main installation function
+
+(defun lsp-installer--check-platform-support (config)
+  "Check if current platform is supported by CONFIG."
+  (let ((platforms (plist-get config :platforms))
+        (current-platform
+         (plist-get (lsp-installer--system-info) :system)))
+    (or (null platforms) ; No platform restriction
+        (memq current-platform platforms))))
 
 (defun lsp-installer--install-server-internal (server-name)
   "Internal function to install SERVER-NAME."
@@ -383,6 +604,16 @@ Automatically handles common error patterns and directory creation."
 
     (unless config
       (error "Unknown server: %s" server-name))
+    (unless installer
+      (error
+       "Server %s has no :installer defined in its config"
+       server-name))
+
+    (unless (lsp-installer--check-platform-support config)
+      (error
+       "Server %s is not supported on %s"
+       server-name
+       (plist-get (lsp-installer--system-info) :system)))
 
     (when-let ((condition (plist-get config :condition)))
       (unless (funcall condition)
@@ -393,6 +624,7 @@ Automatically handles common error patterns and directory creation."
            (dest-dir
             (expand-file-name (symbol-name server-name)
                               lsp-installer-dir))
+           ;; 修正：統一されたbin-directory処理
            (bin-directory
             (pcase installer
               ('npm
@@ -412,13 +644,33 @@ Automatically handles common error patterns and directory creation."
               ('dotnet
                (lsp-installer--install-via-dotnet
                 package-name dest-dir))
+              ('composer
+               (lsp-installer--install-via-composer
+                package-name dest-dir))
+              ('coursier
+               (lsp-installer--install-via-coursier
+                package-name dest-dir))
+              ('luarocks
+               (lsp-installer--install-via-luarocks
+                package-name dest-dir))
+              ('nimble
+               (lsp-installer--install-via-nimble
+                package-name dest-dir))
+              ('opam
+               (lsp-installer--install-via-opam
+                package-name dest-dir))
+              ('cabal
+               (lsp-installer--install-via-cabal
+                package-name dest-dir))
+              ('binary
+               (lsp-installer--install-binary server-name config))
               ('system
                (error "System installer doesn't need installation"))
-              (_
-               (lsp-installer--install-binary server-name config)))))
+              (_ (error "Unknown installer type: %s" installer)))))
 
       ;; Add bin directory to exec-path
       (when (and lsp-installer-update-exec-path
+                 bin-directory
                  (file-directory-p bin-directory))
         (lsp-installer--add-to-exec-path bin-directory))
 
@@ -490,10 +742,15 @@ Automatically handles common error patterns and directory creation."
           (succeeded nil))
       (dolist (server servers)
         (message "Installing %s..." server)
-        (if (lsp-installer--with-error-handling server
-              (lsp-installer--install-server-internal server))
-            (push server succeeded)
-          (push server failed)))
+        (condition-case err
+            (progn
+              (lsp-installer--install-server-internal server)
+              (push server succeeded))
+          (error
+           (message "Failed to install %s: %s"
+                    server
+                    (error-message-string err))
+           (push server failed))))
       (message "Installation complete. Succeeded: %d, Failed: %d"
                (length succeeded)
                (length failed))
@@ -533,15 +790,20 @@ Automatically handles common error patterns and directory creation."
               (updated 0))
           (dolist (server installed-servers)
             (message "Updating %s..." server)
-            (if (lsp-installer--with-error-handling server
+            (condition-case err
+                (progn
                   (let ((server-dir
                          (expand-file-name (symbol-name server)
                                            lsp-installer-dir)))
                     (when (file-directory-p server-dir)
                       (delete-directory server-dir t))
-                    (lsp-installer--install-server-internal server)))
-                (setq updated (1+ updated))
-              (push server failed)))
+                    (lsp-installer--install-server-internal server))
+                  (setq updated (1+ updated)))
+              (error
+               (message "Failed to update %s: %s"
+                        server
+                        (error-message-string err))
+               (push server failed))))
           (message "Update complete. Updated: %d, Failed: %d"
                    updated
                    (length failed))
@@ -562,19 +824,24 @@ Automatically handles common error patterns and directory creation."
           (expand-file-name (symbol-name server-name)
                             lsp-installer-dir))
          (config (lsp-installer--get-server-config server-name))
-         (installer (plist-get config :installer))
+         (installer (and config (plist-get config :installer)))
          (bin-dir
-          (lsp-installer--get-bin-directory server-name installer)))
+          (when installer
+            (lsp-installer--get-bin-directory
+             server-name installer))))
     (when (and (file-directory-p server-dir)
                (y-or-n-p (format "Delete %s? " server-dir)))
       (delete-directory server-dir t)
       ;; Remove from exec-path if we added it
-      (when (member bin-dir lsp-installer--added-paths)
+      (when (and bin-dir (member bin-dir lsp-installer--added-paths))
         (setq exec-path (delete bin-dir exec-path))
         (setq lsp-installer--added-paths
               (delete bin-dir lsp-installer--added-paths)))
-      (message "Uninstalled %s and removed from exec-path"
-               server-name))))
+      (message "Uninstalled %s%s"
+               server-name
+               (if bin-dir
+                   " and removed from exec-path"
+                 "")))))
 
 ;;;###autoload
 (defun lsp-installer-list-servers ()
@@ -625,13 +892,16 @@ Automatically handles common error patterns and directory creation."
   (let ((servers (lsp-installer--available-servers))
         (added-count 0))
     (dolist (server servers)
-      (let* ((config (lsp-installer--get-server-config server))
-             (installer (plist-get config :installer))
-             (bin-dir
-              (lsp-installer--get-bin-directory server installer)))
-        (when (file-directory-p bin-dir)
-          (lsp-installer--add-to-exec-path bin-dir)
-          (setq added-count (1+ added-count)))))
+      (when (lsp-installer--server-installed-p server)
+        (let* ((config (lsp-installer--get-server-config server))
+               (installer (and config (plist-get config :installer)))
+               (bin-dir
+                (when installer
+                  (lsp-installer--get-bin-directory
+                   server installer))))
+          (when (and bin-dir (file-directory-p bin-dir))
+            (lsp-installer--add-to-exec-path bin-dir)
+            (setq added-count (1+ added-count))))))
     (message "Added %d server bin directories to exec-path"
              added-count)))
 
