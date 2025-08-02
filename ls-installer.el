@@ -2,17 +2,17 @@
 
 ;; Copyright (C) 2025
 
-;; Author: Your Name
+;; Author: Nobuyuki Kamimoto
 ;; Version: 0.1.0
 ;; Package-Requires: ((emacs "27.1"))
 ;; Keywords: languages, lsp
-;; URL: https://github.com/your-username/ls-installer
+;; URL: https://github.com/kn66/ls-installer
 
 ;;; Commentary:
 
 ;; This package provides functionality to install, update, and manage
 ;; language servers for Emacs, similar to vim-lsp-settings.
-;; 
+;;
 ;; Language servers are installed to ~/.emacs.d/language-servers/
 ;; and their paths are automatically added to exec-path.
 ;;
