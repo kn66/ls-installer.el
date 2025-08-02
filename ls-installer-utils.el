@@ -10,13 +10,18 @@
 
 (require 'cl-lib)
 
+(defcustom ls-installer--pip-executable
+  (if (executable-find "pip3")
+      "pip3"
+    "pip")
+  "Path to pip executable (e.g. 'pip', 'pip3')."
+  :type 'string
+  :group 'ls-installer)
+
 ;;; Variables
 
 (defvar ls-installer--npm-executable "npm"
   "Path to npm executable.")
-
-(defvar ls-installer--pip-executable "pip"
-  "Path to pip executable.")
 
 (defvar ls-installer--curl-executable "curl"
   "Path to curl executable.")
