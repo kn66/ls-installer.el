@@ -1,0 +1,76 @@
+* Overview
+=ls-installer= is a package for Emacs that installs, updates, and removes language servers.
+
+* Features
+
+It manages language server definitions for each language in an eld file and adds installed language servers to =exec-path= so they can be used by various LSP packages.
+
+* Main Features
+
+**Note:** Still in development stage, only basic features are implemented.
+
+- Install, uninstall, and update language servers
+- Check installation status of language servers
+- Add binary paths of installed servers to Emacs =exec-path=
+- Support various installation methods including =npm=, =pip=, =go=, =dotnet=, GitHub releases, regular binary archives, etc.
+
+* Installation
+
+#+BEGIN_SRC emacs-lisp
+  (use-package ls-installer
+    :vc ( :url "https://github.com/kn66/ls-installer.el"
+          :rev :newest)
+    :config
+    (ls-installer-setup))
+#+END_SRC
+
+* Usage
+
+| Command                           | Description                                              |
+|-----------------------------------+----------------------------------------------------------|
+| M-x ls-installer-list-servers     | Display list of available & installed servers           |
+| M-x ls-installer-install-server   | Install server by specifying server name                |
+| M-x ls-installer-uninstall-server | Uninstall server by specifying server name              |
+| M-x ls-installer-update-server    | Update server by specifying server name                 |
+| M-x ls-installer-setup            | Add installed language servers to exec-path             |
+
+* Installable Language Servers
+
+- JavaScript/TypeScript: typescript-language-server
+- Python: pyright, pylsp, jedi-language-server
+- Go: gopls, golangci-lint, go-outline, etc.
+- Rust: rust-analyzer
+- C/C++: clangd
+- Java: jdtls
+- C#: csharp-ls, omnisharp
+- HTML/CSS/JSON: vscode-langservers-extracted
+- Lua: lua-language-server
+- Others: Bash, YAML, Svelte, Vue, CMake, Fortran, etc.
+
+See =servers.eld= for details.
+
+**Note:** I am a Windows user, so operation on Linux or Mac is unconfirmed.
+
+* Customization
+
+#+begin_src emacs-lisp
+  (setopt lsp-server-install-dir "~/.emacs.d/language-servers") ;; Language server installation directory
+  (setopt ls-installer-servers-file "~/.emacs.d/language-servers/servers.eld") ;; Server configuration file
+#+end_src
+
+* FAQ
+
+** Q. Cannot install server
+A. Please check if required commands (=npm=, =pip=, =go=, =dotnet=, =curl=, =wget=, etc.) are in PATH.
+
+** Q. Want to add a server
+A. Please add a definition in plist format to =servers.eld=. The main body will automatically detect it.
+
+** Q. Want to install from package managers other than those mentioned above
+A. Please create an issue. We will consider support.
+
+* License
+MIT License
+
+* Contributing
+Bug reports and feature requests are welcome. Feel free to submit fixes and PRs as well.
