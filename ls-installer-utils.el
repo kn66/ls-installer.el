@@ -10,7 +10,7 @@
 
 (require 'cl-lib)
 
-(defcustom ls-installer--pip-executable
+(defcustom ls-installer-pip-executable
   (if (executable-find "pip3")
       "pip3"
     "pip")

@@ -13,7 +13,7 @@
 (defun ls-installer--install-pip-package
     (server-name package-name &optional version)
   "Install pip package PACKAGE-NAME for SERVER-NAME with optional VERSION."
-  (unless (ls-installer--executable-find ls-installer--pip-executable)
+  (unless (ls-installer--executable-find ls-installer-pip-executable)
     (ls-installer--error "pip not found in PATH"))
 
   (let* ((server-dir
