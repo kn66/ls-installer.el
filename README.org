@@ -7,7 +7,7 @@ It manages language server definitions for each language in an eld file and adds
 
 * Main Features
 
-**Note:** Still in development stage, only basic features are implemented.
+*Note:* Still in development stage, only basic features are implemented.
 
 - Install, uninstall, and update language servers
 - Check installation status of language servers
@@ -49,7 +49,7 @@ It manages language server definitions for each language in an eld file and adds
 
 See =servers.eld= for details.
 
-**Note:** I am a Windows user, so operation on Linux or Mac is unconfirmed.
+*Note:* I am a Windows user, so operation on Linux or Mac is unconfirmed.
 
 * Customization
 
