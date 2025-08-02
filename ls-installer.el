@@ -46,8 +46,8 @@
   :group 'ls-installer)
 
 (defcustom ls-installer-servers-file
-  (expand-file-name "lisp/ls-installer.el/servers.eld"
-                    user-emacs-directory)
+  (expand-file-name "servers.eld"
+                    (file-name-directory (or load-file-name buffer-file-name)))
   "File containing server configuration data."
   :type 'file
   :group 'ls-installer)

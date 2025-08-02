@@ -5,7 +5,6 @@
 (( :name "typescript-language-server"
    :description "TypeScript & JavaScript language server"
    :package-name "typescript-language-server"
-   :version "4.3.3"
    :install-script ls--install-npm-package
    :lsp-config
    ( :server-id 'ts-ls
@@ -15,7 +14,6 @@
  ( :name "pyright"
    :description "Python language server"
    :package-name "pyright"
-   :version "1.1.380"
    :install-script ls--install-npm-package
    :lsp-config
    ( :server-id 'pyright
@@ -35,7 +33,6 @@
    :description "Rust language server"
    :install-script ls--install-github-release
    :github-repo "rust-lang/rust-analyzer"
-   :asset-pattern "rust-analyzer-.*-unknown-linux-gnu\\.gz\\|rust-analyzer-.*-apple-darwin\\.gz\\|rust-analyzer-.*-pc-windows-msvc\\.exe"
    :executable-name "rust-analyzer"
    :lsp-config
    ( :server-id 'rust-analyzer
@@ -127,8 +124,7 @@
    :description "Go linters runner"
    :install-script ls--install-github-release
    :github-repo "golangci/golangci-lint"
-   :asset-pattern "golangci-lint-.*-linux-amd64\\.tar\\.gz\\|golangci-lint-.*-darwin-amd64\\.tar\\.gz\\|golangci-lint-.*-windows-amd64\\.zip"
-   :executable-name "golangci-lint-*/golangci-lint"
+   :executable-name "golangci-lint"
    :strip-components 1
    :lsp-config
    ( :server-id 'golangci-lint
@@ -139,7 +135,6 @@
    :description "C/C++ language server"
    :install-script ls--install-github-release
    :github-repo "clangd/clangd"
-   :asset-pattern "clangd-.*\\.tar\\.xz"
    :executable-name "bin/clangd"
    :strip-components 1
    :lsp-config
@@ -151,7 +146,6 @@
    :description "Zig language server"
    :install-script ls--install-github-release
    :github-repo "zigtools/zls"
-   :asset-pattern "zls-.*\\.tar\\.xz"
    :executable-name "zls"
    :strip-components 1
    :lsp-config
@@ -163,9 +157,8 @@
    :description "Lua language server"
    :install-script ls--install-github-release
    :github-repo "LuaLS/lua-language-server"
-   :asset-pattern "lua-language-server-.*\\.tar\\.gz"
    :executable-name "bin/lua-language-server"
-   :strip-components 1
+   :strip-components 0
    :lsp-config
    ( :server-id 'lua-ls
      :major-modes '(lua-mode)
@@ -196,7 +189,6 @@
    :description "OmniSharp C# language server"
    :install-script ls--install-github-release
    :github-repo "OmniSharp/omnisharp-roslyn"
-   :asset-pattern "omnisharp-.*\\.tar\\.gz"
    :executable-name "OmniSharp"
    :strip-components 0
    :lsp-config
@@ -207,7 +199,6 @@
  ( :name "vscode-html-language-server"
    :description "HTML language server"
    :package-name "vscode-langservers-extracted"
-   :version "4.10.0"
    :install-script ls--install-npm-package
    :lsp-config
    ( :server-id 'html-ls
@@ -217,7 +208,6 @@
  ( :name "vscode-css-language-server"
    :description "CSS language server"
    :package-name "vscode-langservers-extracted"
-   :version "4.10.0"
    :install-script ls--install-npm-package
    :lsp-config
    ( :server-id 'css-ls
@@ -227,7 +217,6 @@
  ( :name "vscode-json-language-server"
    :description "JSON language server"
    :package-name "vscode-langservers-extracted"
-   :version "4.10.0"
    :install-script ls--install-npm-package
    :lsp-config
    ( :server-id 'json-ls

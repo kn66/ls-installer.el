@@ -22,29 +22,53 @@
           (if version
               (format "%s==%s" package-name version)
             package-name))
-         (target-dir
-          (expand-file-name "lib/python/site-packages" server-dir))
+         (venv-dir (expand-file-name "venv" server-dir))
          (bin-dir (expand-file-name "bin" server-dir)))
 
-    (ls-installer--ensure-directory target-dir)
+    (ls-installer--ensure-directory server-dir)
     (ls-installer--ensure-directory bin-dir)
     (ls-installer--message
      "Installing pip package %s..." package-spec)
 
-    ;; Install the package to specific directory
+    ;; Create virtual environment
     (let ((exit-code
-           (call-process ls-installer--pip-executable
+           (call-process (or (executable-find "python3")
+                             (executable-find "python")
+                             "python")
                          nil
                          "*ls-installer-pip*"
                          t
-                         "install"
-                         "--target"
-                         target-dir
-                         "--install-option"
-                         (format "--install-scripts=%s" bin-dir)
-                         package-spec)))
+                         "-m"
+                         "venv"
+                         venv-dir)))
+      (when (/= exit-code 0)
+        (ls-installer--error
+         "Failed to create virtual environment (exit code: %d)"
+         exit-code)))
+
+    ;; Install package in virtual environment
+    (let* ((python-exe
+            (expand-file-name (if (eq system-type 'windows-nt)
+                                  "Scripts/python.exe"
+                                "bin/python")
+                              venv-dir))
+           (pip-exe
+            (expand-file-name (if (eq system-type 'windows-nt)
+                                  "Scripts/pip.exe"
+                                "bin/pip")
+                              venv-dir))
+           (exit-code
+            (call-process pip-exe
+                          nil
+                          "*ls-installer-pip*"
+                          t
+                          "install"
+                          package-spec)))
       (if (= exit-code 0)
           (progn
+            ;; Create wrapper scripts in bin directory
+            (ls-installer--create-pip-wrappers
+             server-name package-name venv-dir)
             (ls-installer--message
              "Successfully installed %s" package-spec)
             (ls-installer--add-to-exec-path server-name)
@@ -54,22 +78,52 @@
          package-spec
          exit-code)))))
 
+(defun ls-installer--create-pip-wrappers
+    (server-name package-name venv-dir)
+  "Create wrapper scripts for Python executables."
+  (let* ((server-dir
+          (ls-installer--get-server-install-dir server-name))
+         (bin-dir (expand-file-name "bin" server-dir))
+         (venv-bin-dir
+          (expand-file-name (if (eq system-type 'windows-nt)
+                                "Scripts"
+                              "bin")
+                            venv-dir)))
+
+    ;; Find executables in venv and create wrappers
+    (when (file-directory-p venv-bin-dir)
+      (dolist (file (directory-files venv-bin-dir))
+        (let ((full-path (expand-file-name file venv-bin-dir)))
+          (when (and (file-executable-p full-path)
+                     (not (member file '("." "..")))
+                     (not
+                      (string-match-p
+                       "python\\|pip\\|activate" file)))
+            ;; Create wrapper script
+            (let ((wrapper-path (expand-file-name file bin-dir)))
+              (with-temp-file wrapper-path
+                (insert "#!/bin/bash\n")
+                (insert (format "exec \"%s\" \"$@\"\n" full-path)))
+              (ls-installer--make-executable wrapper-path)
+
+              ;; For Windows, also create .bat file
+              (when (eq system-type 'windows-nt)
+                (let ((bat-path (concat wrapper-path ".bat")))
+                  (with-temp-file bat-path
+                    (insert "@echo off\n")
+                    (insert
+                     (format "\"%s\" %%*\n" full-path))))))))))))
+
 (defun ls-installer--uninstall-pip-package (server-name package-name)
   "Uninstall pip package PACKAGE-NAME for SERVER-NAME."
-  (ls-installer--message
-   "Uninstalling pip package %s..." package-name)
-  (let ((exit-code
-         (call-process ls-installer--pip-executable
-                       nil
-                       "*ls-installer-pip*"
-                       t
-                       "uninstall"
-                       "-y"
-                       package-name)))
-    (if (= exit-code 0)
-        (ls-installer--message
-         "Successfully uninstalled %s" package-name)
-      (ls-installer--error "Failed to uninstall %s" package-name))))
+  (let ((server-dir
+         (ls-installer--get-server-install-dir server-name)))
+    (when (file-directory-p server-dir)
+      (ls-installer--message
+       "Uninstalling pip package %s..." package-name)
+      (delete-directory server-dir t)
+      (ls-installer--message
+       "Successfully uninstalled %s" package-name))))
 
 (provide 'ls-installer-pip)
 

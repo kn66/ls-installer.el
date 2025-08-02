@@ -48,6 +48,7 @@ STRIP-COMPONENTS is number of path components to strip during extraction."
           (if (string-match-p
                "\\.(tar\\.gz\\|tgz\\|tar\\.xz\\|zip)$" filename)
               (progn
+                ;; It's an archive - extract it
                 (ls-installer--extract-archive
                  temp-file extract-dir strip-components)
                 ;; Find and make executable files executable
@@ -63,12 +64,14 @@ STRIP-COMPONENTS is number of path components to strip during extraction."
                               (file-name-nondirectory executable-name)
                               bin-dir)))
                         (unless (file-exists-p bin-path)
-                          (make-symbolic-link
-                           exec-path bin-path)))))))
-            ;; For single binary files
+                          (when (file-exists-p exec-path)
+                            (make-symbolic-link
+                             exec-path bin-path))))))))
+            ;; For single binary files (not archives)
             (let ((target-file
                    (expand-file-name
-                    (or executable-name
+                    (or (and executable-name
+                             (file-name-nondirectory executable-name))
                         (file-name-nondirectory filename))
                     bin-dir)))
               (copy-file temp-file target-file t)
@@ -91,12 +94,7 @@ STRIP-COMPONENTS is number of path components to strip during extraction."
      executable-name
      target-subdir
      strip-components)
-  "Install binary from GitHub release.
-REPO-PATH is the GitHub repository path (e.g., 'rust-lang/rust-analyzer').
-ASSET-PATTERN is a regex to match the asset name for current platform.
-EXECUTABLE-NAME is the name of the executable after extraction.
-TARGET-SUBDIR is optional subdirectory to extract to.
-STRIP-COMPONENTS is number of path components to strip during extraction."
+  "Install binary from GitHub release."
   (let* ((api-url
           (format "https://api.github.com/repos/%s/releases/latest"
                   repo-path))
@@ -115,40 +113,110 @@ STRIP-COMPONENTS is number of path components to strip during extraction."
       (kill-buffer))
 
     (let* ((assets (cdr (assq 'assets release-data)))
-           (platform (ls-installer--get-platform))
-           (arch (ls-installer--get-arch))
-           (pattern
-            (or asset-pattern (format "%s.*%s" platform arch))))
+           ;; OS判定
+           (os-patterns
+            (cond
+             ((eq system-type 'windows-nt)
+              '("win" "windows"))
+             ((eq system-type 'darwin)
+              '("osx" "darwin" "mac" "macos"))
+             ((eq system-type 'gnu/linux)
+              '("linux"))
+             (t
+              '("linux"))))
+           ;; アーキテクチャ判定（64ビット優先、デフォルトパターンを追加）
+           (arch-patterns
+            (cond
+             ((string-match "aarch64\\|arm64" system-configuration)
+              '("arm64" "aarch64" "x64" "x86_64" "amd64" ""))
+             ((string-match "x86_64\\|amd64" system-configuration)
+              '("x64" "x86_64" "amd64" "ia32" "x86" ""))
+             (t
+              '("x64" "x86_64" "amd64" "ia32" "x86" ""))))
+           ;; Windowsの場合は.exe拡張子を追加
+           (platform-executable-name
+            (if (and executable-name (eq system-type 'windows-nt))
+                (if (string-suffix-p ".exe" executable-name)
+                    executable-name
+                  (concat executable-name ".exe"))
+              executable-name)))
 
-      ;; Find matching asset
-      (cl-loop
-       for
-       asset
-       across
-       assets
-       for
-       name
-       =
-       (cdr (assq 'name asset))
-       when
-       (string-match-p pattern name)
-       do
-       (setq download-url (cdr (assq 'browser_download_url asset)))
-       and
-       return
-       t)
+      ;; 1段階目: OS別にassetをフィルタリング
+      (let ((os-filtered-assets
+             (cl-remove-if-not
+              (lambda (asset)
+                (let ((name (cdr (assq 'name asset))))
+                  (and
+                   (not
+                    (string-match-p
+                     "submodules\\|source\\|debug-symbols\\|indexing"
+                     name))
+                   ;; omnisharpの場合は特別な除外ルールを追加
+                   (if (string= server-name "omnisharp")
+                       (not
+                        (string-match-p
+                         "\\.http-\\|omnisharp\\.http\\|-mono" name))
+                     t)
+                   (cl-some
+                    (lambda (pattern)
+                      (string-match-p pattern name))
+                    os-patterns))))
+              (append assets nil))))
 
-      (unless download-url
-        (ls-installer--error
-         "No suitable binary found for %s %s in %s"
-         platform
-         arch
-         repo-path))
+        (unless os-filtered-assets
+          (ls-installer--error
+           "No assets found for OS %s in %s. Available assets: %s"
+           (car os-patterns)
+           repo-path
+           (mapcar
+            (lambda (asset)
+              (cdr (assq 'name asset)))
+            (append assets nil))))
 
-      (ls-installer--install-binary server-name download-url
-                                    executable-name
-                                    target-subdir
-                                    strip-components))))
+        ;; 2段階目: アーキテクチャ別に優先順位をつけて選択
+        (let ((selected-asset
+               (cl-loop
+                for arch-pattern in arch-patterns for matching-asset =
+                (cl-find-if
+                 (lambda (asset)
+                   (let ((name (cdr (assq 'name asset))))
+                     (and
+                      (if (string= arch-pattern "")
+                          ;; 空文字の場合は常にマッチ（デフォルト）
+                          t
+                        ;; 通常のパターンマッチ
+                        (string-match-p arch-pattern name))
+                      ;; asset-patternが指定されている場合はそれもチェック
+                      (or (not asset-pattern)
+                          (string-match-p asset-pattern name))
+                      ;; omnisharpの場合は.NET 6.0版を優先
+                      (if (string= server-name "omnisharp")
+                          (not (string-match-p "-net6\\.0" name))
+                        t))))
+                 os-filtered-assets)
+                when matching-asset return matching-asset)))
+
+          (unless selected-asset
+            (ls-installer--error
+             "No suitable binary found for %s %s in %s. OS-filtered assets: %s"
+             (car os-patterns)
+             (car arch-patterns)
+             repo-path
+             (mapcar
+              (lambda (asset)
+                (cdr (assq 'name asset)))
+              os-filtered-assets)))
+
+          (setq download-url
+                (cdr (assq 'browser_download_url selected-asset)))
+
+          (ls-installer--message
+           "Selected asset: %s" (cdr (assq 'name selected-asset)))
+
+          (ls-installer--install-binary server-name download-url
+                                        platform-executable-name
+                                        target-subdir
+                                        strip-components))))))
 
 (provide 'ls-installer-binary)
 
