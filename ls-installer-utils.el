@@ -189,12 +189,16 @@
   (expand-file-name server-name ls-installer-install-dir))
 
 (defun ls-installer--add-to-exec-path (server-name)
-  "Add SERVER-NAME's bin directory to exec-path."
+  "Add SERVER-NAME's bin directories to exec-path."
   (let* ((server-dir
           (ls-installer--get-server-install-dir server-name))
-         (bin-dir (expand-file-name "bin" server-dir)))
+         (bin-dir (expand-file-name "bin" server-dir))
+         (npm-bin-dir
+          (expand-file-name "node_modules/.bin" server-dir)))
     (when (file-directory-p bin-dir)
-      (add-to-list 'exec-path bin-dir))))
+      (add-to-list 'exec-path bin-dir))
+    (when (file-directory-p npm-bin-dir)
+      (add-to-list 'exec-path npm-bin-dir))))
 
 (defun ls-installer--server-installed-p (server-name)
   "Check if SERVER-NAME is installed."
