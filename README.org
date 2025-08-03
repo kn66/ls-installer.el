@@ -51,6 +51,19 @@ See =servers.eld= for details.
 
 *Note:* I am a Windows user, so operation on Linux or Mac is unconfirmed.
 
+* JDTLS Support
+
+To use JDTLS (Java Development Tools Language Server) with =ls-installer=, you need to ensure that the =eglot= package is installed and configured properly. The following steps will help you set it up:
+
+#+begin_src emacs-lisp
+  (with-eval-after-load 'eglot
+    (let* ((info (ls-installer-jdtls-command-info))
+           (cmd (cons '(java-mode java-ts-mode)
+                      (append (list (cdr (assoc :executable info)))
+                              (cdr (assoc :args info))))))
+      (add-to-list 'eglot-server-programs cmd)))
+#+end_src
+
 * Customization
 
 #+begin_src emacs-lisp

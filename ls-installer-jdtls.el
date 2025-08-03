@@ -204,6 +204,47 @@ JDTLS-DIR is the directory where JDT LS is installed."
     (ls-installer--message
      "Created JDT LS wrapper script: %s" wrapper-script)))
 
+(defun ls-installer-jdtls-command-info ()
+  "Return an alist of command/data/config for use with any LSP client."
+  (let* ((server-dir (ls-installer--get-server-install-dir "jdtls"))
+         (base-dir (expand-file-name "eclipse.jdt.ls" server-dir))
+         (config-dir
+          (expand-file-name (cond
+                             ((eq system-type 'windows-nt)
+                              "config_win")
+                             ((eq system-type 'darwin)
+                              "config_mac")
+                             (t
+                              "config_linux"))
+                            base-dir))
+         (plugins-dir (expand-file-name "plugins" base-dir))
+         (launcher-jar
+          (car
+           (directory-files
+            plugins-dir
+            t "^org\\.eclipse\\.equinox\\.launcher_.*\\.jar$")))
+         (workspace-dir
+          (file-truename (expand-file-name "jdtls-workspace" temporary-file-directory))))
+    (when (and launcher-jar (file-exists-p config-dir))
+      `((:executable . "java")
+        (:args
+         .
+         ("-Xmx2G"
+          "--add-modules=ALL-SYSTEM"
+          "--add-opens" "java.base/java.util=ALL-UNNAMED"
+          "--add-opens" "java.base/java.lang=ALL-UNNAMED"
+          "--enable-native-access=ALL-UNNAMED"
+          "-Declipse.application=org.eclipse.jdt.ls.core.id1"
+          "-Dosgi.bundles.defaultStartLevel=4"
+          "-Declipse.product=org.eclipse.jdt.ls.core.product"
+          "-Dlog.protocol=true"
+          "-jar" ,launcher-jar
+          "-configuration" ,config-dir
+          "-data" ,workspace-dir))
+        (:workspace . ,workspace-dir)
+        (:launcher . ,launcher-jar)
+        (:config . ,config-dir)))))
+
 (provide 'ls-installer-jdtls)
 
 ;;; ls-installer-jdtls.el ends here
