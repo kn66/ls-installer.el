@@ -113,7 +113,7 @@ STRIP-COMPONENTS is number of path components to strip during extraction."
       (kill-buffer))
 
     (let* ((assets (cdr (assq 'assets release-data)))
-           ;; OS判定
+           ;; OS detection
            (os-patterns
             (cond
              ((eq system-type 'windows-nt)
@@ -124,7 +124,7 @@ STRIP-COMPONENTS is number of path components to strip during extraction."
               '("linux"))
              (t
               '("linux"))))
-           ;; アーキテクチャ判定（64ビット優先、デフォルトパターンを追加）
+           ;; Architecture detection (64-bit priority, add default patterns)
            (arch-patterns
             (cond
              ((string-match "aarch64\\|arm64" system-configuration)
@@ -133,7 +133,7 @@ STRIP-COMPONENTS is number of path components to strip during extraction."
               '("x64" "x86_64" "amd64" "ia32" "x86" ""))
              (t
               '("x64" "x86_64" "amd64" "ia32" "x86" ""))))
-           ;; Windowsの場合は.exe拡張子を追加
+           ;; Add .exe extension for Windows if needed
            (platform-executable-name
             (if (and executable-name (eq system-type 'windows-nt))
                 (if (string-suffix-p ".exe" executable-name)
@@ -141,7 +141,7 @@ STRIP-COMPONENTS is number of path components to strip during extraction."
                   (concat executable-name ".exe"))
               executable-name)))
 
-      ;; 1段階目: OS別にassetをフィルタリング
+      ;; Stage 1: Filter assets by OS
       (let ((os-filtered-assets
              (cl-remove-if-not
               (lambda (asset)
@@ -151,7 +151,7 @@ STRIP-COMPONENTS is number of path components to strip during extraction."
                     (string-match-p
                      "submodules\\|source\\|debug-symbols\\|indexing"
                      name))
-                   ;; omnisharpの場合は特別な除外ルールを追加
+                   ;; Add special exclusion rules for omnisharp
                    (if (string= server-name "omnisharp")
                        (not
                         (string-match-p
@@ -173,7 +173,7 @@ STRIP-COMPONENTS is number of path components to strip during extraction."
               (cdr (assq 'name asset)))
             (append assets nil))))
 
-        ;; 2段階目: アーキテクチャ別に優先順位をつけて選択
+        ;; Stage 2: Select by architecture with priority
         (let ((selected-asset
                (cl-loop
                 for arch-pattern in arch-patterns for matching-asset =
@@ -182,14 +182,14 @@ STRIP-COMPONENTS is number of path components to strip during extraction."
                    (let ((name (cdr (assq 'name asset))))
                      (and
                       (if (string= arch-pattern "")
-                          ;; 空文字の場合は常にマッチ（デフォルト）
+                          ;; Empty string always matches (default)
                           t
-                        ;; 通常のパターンマッチ
+                        ;; Normal pattern matching
                         (string-match-p arch-pattern name))
-                      ;; asset-patternが指定されている場合はそれもチェック
+                      ;; Check asset-pattern if specified
                       (or (not asset-pattern)
                           (string-match-p asset-pattern name))
-                      ;; omnisharpの場合は.NET 6.0版を優先
+                      ;; For omnisharp, prioritize .NET 6.0 version
                       (if (string= server-name "omnisharp")
                           (not (string-match-p "-net6\\.0" name))
                         t))))
