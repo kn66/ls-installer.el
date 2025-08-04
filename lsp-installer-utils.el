@@ -1,100 +1,100 @@
-;;; ls-installer-utils.el --- Utility functions for ls-installer -*- lexical-binding: t; -*-
+;;; lsp-installer-utils.el --- Utility functions for lsp-installer -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2025
 
 ;;; Commentary:
 
-;; This file contains utility functions used by ls-installer.
+;; This file contains utility functions used by lsp-installer.
 
 ;;; Code:
 
 (require 'cl-lib)
 
-(defcustom ls-installer-pip-executable
+(defcustom lsp-installer-pip-executable
   (if (executable-find "pip3")
       "pip3"
     "pip")
   "Path to pip executable (e.g. 'pip', 'pip3')."
   :type 'string
-  :group 'ls-installer)
+  :group 'lsp-installer)
 
 ;;; Variables
 
-(defvar ls-installer--npm-executable "npm"
+(defvar lsp-installer--npm-executable "npm"
   "Path to npm executable.")
 
-(defvar ls-installer--curl-executable "curl"
+(defvar lsp-installer--curl-executable "curl"
   "Path to curl executable.")
 
-(defvar ls-installer--wget-executable "wget"
+(defvar lsp-installer--wget-executable "wget"
   "Path to wget executable.")
 
-(defvar ls-installer--tar-executable "tar"
+(defvar lsp-installer--tar-executable "tar"
   "Path to tar executable.")
 
-(defvar ls-installer--unzip-executable "unzip"
+(defvar lsp-installer--unzip-executable "unzip"
   "Path to unzip executable.")
 
-(defvar ls-installer--dotnet-executable "dotnet"
+(defvar lsp-installer--dotnet-executable "dotnet"
   "Path to dotnet executable.")
 
 ;;; Utility functions
 
-(defun ls-installer--ensure-directory (dir)
+(defun lsp-installer--ensure-directory (dir)
   "Ensure directory DIR exists."
   (unless (file-exists-p dir)
     (make-directory dir t)))
 
-(defun ls-installer--message (format-string &rest args)
-  "Display a message with LS-INSTALLER prefix."
-  (message "[LS-INSTALLER] %s" (apply #'format format-string args)))
+(defun lsp-installer--message (format-string &rest args)
+  "Display a message with LSP-INSTALLER prefix."
+  (message "[LSP-INSTALLER] %s" (apply #'format format-string args)))
 
-(defun ls-installer--error (format-string &rest args)
-  "Signal an error with LS-INSTALLER prefix."
-  (error "[LS-INSTALLER] %s" (apply #'format format-string args)))
+(defun lsp-installer--error (format-string &rest args)
+  "Signal an error with LSP-INSTALLER prefix."
+  (error "[LSP-INSTALLER] %s" (apply #'format format-string args)))
 
-(defun ls-installer--executable-find (command)
+(defun lsp-installer--executable-find (command)
   "Find executable COMMAND in PATH."
   (executable-find command))
 
-(defun ls-installer--download-file (url target-file)
+(defun lsp-installer--download-file (url target-file)
   "Download file from URL to TARGET-FILE."
-  (ls-installer--message "Downloading %s..." url)
+  (lsp-installer--message "Downloading %s..." url)
   (cond
-   ((ls-installer--executable-find ls-installer--curl-executable)
+   ((lsp-installer--executable-find lsp-installer--curl-executable)
     (let ((exit-code
-           (call-process ls-installer--curl-executable
+           (call-process lsp-installer--curl-executable
                          nil
-                         "*ls-installer-download*"
+                         "*lsp-installer-download*"
                          t
                          "-L"
                          "-o"
                          target-file
                          url)))
       (when (/= exit-code 0)
-        (ls-installer--error
+        (lsp-installer--error
          "Failed to download %s with curl (exit code: %d)"
          url exit-code))))
-   ((ls-installer--executable-find ls-installer--wget-executable)
+   ((lsp-installer--executable-find lsp-installer--wget-executable)
     (let ((exit-code
-           (call-process ls-installer--wget-executable
+           (call-process lsp-installer--wget-executable
                          nil
-                         "*ls-installer-download*"
+                         "*lsp-installer-download*"
                          t
                          "-O"
                          target-file
                          url)))
       (when (/= exit-code 0)
-        (ls-installer--error
+        (lsp-installer--error
          "Failed to download %s with wget (exit code: %d)"
          url exit-code))))
    (t
-    (ls-installer--error "Neither curl nor wget found in PATH"))))
+    (lsp-installer--error "Neither curl nor wget found in PATH"))))
 
-(defun ls-installer--extract-archive
+(defun lsp-installer--extract-archive
     (archive-file target-dir &optional strip-components)
   "Extract ARCHIVE-FILE to TARGET-DIR with optional STRIP-COMPONENTS."
-  (ls-installer--ensure-directory target-dir)
+  (lsp-installer--ensure-directory target-dir)
   (let ((file-ext (file-name-extension archive-file)))
     (cond
      ((string-match-p "tar\\.gz\\|tgz" archive-file)
@@ -108,13 +108,13 @@
                   (number-to-string strip-components)))))
         (let ((exit-code
                (apply #'call-process
-                      ls-installer--tar-executable
+                      lsp-installer--tar-executable
                       nil
-                      "*ls-installer-extract*"
+                      "*lsp-installer-extract*"
                       t
                       args)))
           (when (/= exit-code 0)
-            (ls-installer--error
+            (lsp-installer--error
              "Failed to extract tar.gz archive (exit code: %d)"
              exit-code)))))
      ((string-match-p "tar\\.xz" archive-file)
@@ -128,39 +128,39 @@
                   (number-to-string strip-components)))))
         (let ((exit-code
                (apply #'call-process
-                      ls-installer--tar-executable
+                      lsp-installer--tar-executable
                       nil
-                      "*ls-installer-extract*"
+                      "*lsp-installer-extract*"
                       t
                       args)))
           (when (/= exit-code 0)
-            (ls-installer--error
+            (lsp-installer--error
              "Failed to extract tar.xz archive (exit code: %d)"
              exit-code)))))
      ((string= file-ext "zip")
       (let ((exit-code
-             (call-process ls-installer--unzip-executable
+             (call-process lsp-installer--unzip-executable
                            nil
-                           "*ls-installer-extract*"
+                           "*lsp-installer-extract*"
                            t
                            "-o"
                            archive-file
                            "-d"
                            target-dir)))
         (when (/= exit-code 0)
-          (ls-installer--error
+          (lsp-installer--error
            "Failed to extract zip archive (exit code: %d)"
            exit-code))))
      (t
-      (ls-installer--error "Unsupported archive format: %s"
+      (lsp-installer--error "Unsupported archive format: %s"
                            archive-file)))))
 
-(defun ls-installer--make-executable (file-path)
+(defun lsp-installer--make-executable (file-path)
   "Make FILE-PATH executable."
   (when (file-exists-p file-path)
     (set-file-modes file-path (logior (file-modes file-path) #o111))))
 
-(defun ls-installer--get-platform ()
+(defun lsp-installer--get-platform ()
   "Get current platform string."
   (cond
    ((eq system-type 'darwin)
@@ -172,7 +172,7 @@
    (t
     (symbol-name system-type))))
 
-(defun ls-installer--get-arch ()
+(defun lsp-installer--get-arch ()
   "Get current architecture string."
   (cond
    ((string-match "x86_64\\|amd64" system-configuration)
@@ -184,14 +184,14 @@
    (t
     "x86_64")))
 
-(defun ls-installer--get-server-install-dir (server-name)
+(defun lsp-installer--get-server-install-dir (server-name)
   "Get installation directory for SERVER-NAME."
-  (expand-file-name server-name ls-installer-install-dir))
+  (expand-file-name server-name lsp-installer-install-dir))
 
-(defun ls-installer--add-to-exec-path (server-name)
+(defun lsp-installer--add-to-exec-path (server-name)
   "Add SERVER-NAME's bin directories to exec-path."
   (let* ((server-dir
-          (ls-installer--get-server-install-dir server-name))
+          (lsp-installer--get-server-install-dir server-name))
          (bin-dir (expand-file-name "bin" server-dir))
          (npm-bin-dir
           (expand-file-name "node_modules/.bin" server-dir)))
@@ -200,23 +200,23 @@
     (when (file-directory-p npm-bin-dir)
       (add-to-list 'exec-path npm-bin-dir))))
 
-(defun ls-installer--server-installed-p (server-name)
+(defun lsp-installer--server-installed-p (server-name)
   "Check if SERVER-NAME is installed."
   (let ((server-dir
-         (ls-installer--get-server-install-dir server-name)))
+         (lsp-installer--get-server-install-dir server-name)))
     (and (file-directory-p server-dir)
          (not (directory-empty-p server-dir)))))
 
-(defun ls-installer--list-installed-servers ()
+(defun lsp-installer--list-installed-servers ()
   "List all installed servers."
-  (when (file-directory-p ls-installer-install-dir)
+  (when (file-directory-p lsp-installer-install-dir)
     (cl-remove-if-not
      (lambda (dir)
        (and (file-directory-p
-             (expand-file-name dir ls-installer-install-dir))
+             (expand-file-name dir lsp-installer-install-dir))
             (not (member dir '("." "..")))))
-     (directory-files ls-installer-install-dir))))
+     (directory-files lsp-installer-install-dir))))
 
-(provide 'ls-installer-utils)
+(provide 'lsp-installer-utils)
 
-;;; ls-installer-utils.el ends here
+;;; lsp-installer-utils.el ends here

@@ -1,5 +1,5 @@
 * Overview
-=ls-installer= is a package for Emacs that installs, updates, and removes language servers.
+=lsp-installer= is a package for Emacs that installs, updates, and removes language servers.
 
 * Features
 
@@ -17,22 +17,22 @@ It manages language server definitions for each language in an eld file and adds
 * Installation
 
 #+BEGIN_SRC emacs-lisp
-  (use-package ls-installer
-    :vc ( :url "https://github.com/kn66/ls-installer.el"
+  (use-package lsp-installer
+    :vc ( :url "https://github.com/kn66/lsp-installer.el"
           :rev :newest)
     :config
-    (ls-installer-setup))
+    (lsp-installer-setup))
 #+END_SRC
 
 * Usage
 
 | Command                           | Description                                              |
 |-----------------------------------+----------------------------------------------------------|
-| M-x ls-installer-list-servers     | Display list of available & installed servers           |
-| M-x ls-installer-install-server   | Install server by specifying server name                |
-| M-x ls-installer-uninstall-server | Uninstall server by specifying server name              |
-| M-x ls-installer-update-server    | Update server by specifying server name                 |
-| M-x ls-installer-setup            | Add installed language servers to exec-path             |
+| M-x lsp-installer-list-servers     | Display list of available & installed servers           |
+| M-x lsp-installer-install-server   | Install server by specifying server name                |
+| M-x lsp-installer-uninstall-server | Uninstall server by specifying server name              |
+| M-x lsp-installer-update-server    | Update server by specifying server name                 |
+| M-x lsp-installer-setup            | Add installed language servers to exec-path             |
 
 * Installable Language Servers
 
@@ -53,11 +53,11 @@ See =servers.eld= for details.
 
 * JDTLS Support
 
-To use JDTLS (Java Development Tools Language Server) with =ls-installer=, you need to ensure that the =eglot= package is installed and configured properly. The following steps will help you set it up:
+To use JDTLS (Java Development Tools Language Server) with =lsp-installer=, you need to ensure that the =eglot= package is installed and configured properly. The following steps will help you set it up:
 
 #+begin_src emacs-lisp
   (with-eval-after-load 'eglot
-    (let* ((info (ls-installer-jdtls-command-info))
+    (let* ((info (lsp-installer-jdtls-command-info))
            (cmd (cons '(java-mode java-ts-mode)
                       (append (list (cdr (assoc :executable info)))
                               (cdr (assoc :args info))))))
@@ -68,7 +68,7 @@ To use JDTLS (Java Development Tools Language Server) with =ls-installer=, you n
 
 #+begin_src emacs-lisp
   (setopt lsp-server-install-dir "~/.emacs.d/language-servers") ;; Language server installation directory
-  (setopt ls-installer-servers-file "~/.emacs.d/language-servers/servers.eld") ;; Server configuration file
+  (setopt lsp-installer-servers-file "~/.emacs.d/language-servers/servers.eld") ;; Server configuration file
 #+end_src
 
 * FAQ

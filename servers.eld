@@ -1,4 +1,4 @@
-;; Language Server Configuration for ls-installer
+;; Language Server Configuration for lsp-installer
 ;; This file contains server definitions with npm/pip/binary installation support
 
 ;; List format for servers with npm/pip/binary support

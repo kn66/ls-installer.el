@@ -1,10 +1,10 @@
-;;; ls-installer-binary.el --- Binary installation for ls-installer -*- lexical-binding: t; -*-
+;;; lsp-installer-binary.el --- Binary installation for lsp-installer -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2025
 
 ;;; Commentary:
 
-;; This file contains binary installation functions for ls-installer.
+;; This file contains binary installation functions for lsp-installer.
 
 ;;; Code:
 
@@ -15,7 +15,7 @@
 
 ;;; Binary installation functions
 
-(defun ls-installer--install-binary
+(defun lsp-installer--install-binary
     (server-name
      url &optional executable-name target-subdir strip-components)
   "Install binary from URL for SERVER-NAME.
@@ -23,9 +23,9 @@ EXECUTABLE-NAME is the name of the executable after extraction.
 TARGET-SUBDIR is optional subdirectory to extract to.
 STRIP-COMPONENTS is number of path components to strip during extraction."
   (let* ((server-dir
-          (ls-installer--get-server-install-dir server-name))
+          (lsp-installer--get-server-install-dir server-name))
          (bin-dir (expand-file-name "bin" server-dir))
-         (temp-dir (make-temp-file "ls-installer-" t))
+         (temp-dir (make-temp-file "lsp-installer-" t))
          (filename
           (file-name-nondirectory (car (split-string url "?"))))
          (temp-file (expand-file-name filename temp-dir))
@@ -36,20 +36,20 @@ STRIP-COMPONENTS is number of path components to strip during extraction."
 
     (unwind-protect
         (progn
-          (ls-installer--ensure-directory server-dir)
-          (ls-installer--ensure-directory bin-dir)
-          (ls-installer--message
+          (lsp-installer--ensure-directory server-dir)
+          (lsp-installer--ensure-directory bin-dir)
+          (lsp-installer--message
            "Installing binary %s from %s..." server-name url)
 
           ;; Download the file
-          (ls-installer--download-file url temp-file)
+          (lsp-installer--download-file url temp-file)
 
           ;; Extract if it's an archive, otherwise copy directly
           (if (string-match-p
                "\\.(tar\\.gz\\|tgz\\|tar\\.xz\\|zip)$" filename)
               (progn
                 ;; It's an archive - extract it
-                (ls-installer--extract-archive
+                (lsp-installer--extract-archive
                  temp-file extract-dir strip-components)
                 ;; Find and make executable files executable
                 (when executable-name
@@ -57,7 +57,7 @@ STRIP-COMPONENTS is number of path components to strip during extraction."
                          (expand-file-name executable-name
                                            extract-dir)))
                     (when (file-exists-p exec-path)
-                      (ls-installer--make-executable exec-path)
+                      (lsp-installer--make-executable exec-path)
                       ;; Create symlink in bin directory if not already there
                       (let ((bin-path
                              (expand-file-name
@@ -75,18 +75,18 @@ STRIP-COMPONENTS is number of path components to strip during extraction."
                         (file-name-nondirectory filename))
                     bin-dir)))
               (copy-file temp-file target-file t)
-              (ls-installer--make-executable target-file)))
+              (lsp-installer--make-executable target-file)))
 
-          (ls-installer--message
+          (lsp-installer--message
            "Successfully installed %s" server-name)
-          (ls-installer--add-to-exec-path server-name)
+          (lsp-installer--add-to-exec-path server-name)
           t)
 
       ;; Cleanup
       (when (file-exists-p temp-dir)
         (delete-directory temp-dir t)))))
 
-(defun ls-installer--install-github-release
+(defun lsp-installer--install-github-release
     (server-name
      repo-path
      &optional
@@ -103,7 +103,7 @@ STRIP-COMPONENTS is number of path components to strip during extraction."
          download-url)
 
     (unless temp-buffer
-      (ls-installer--error
+      (lsp-installer--error
        "Failed to fetch GitHub API for %s" repo-path))
 
     (with-current-buffer temp-buffer
@@ -164,7 +164,7 @@ STRIP-COMPONENTS is number of path components to strip during extraction."
               (append assets nil))))
 
         (unless os-filtered-assets
-          (ls-installer--error
+          (lsp-installer--error
            "No assets found for OS %s in %s. Available assets: %s"
            (car os-patterns)
            repo-path
@@ -197,7 +197,7 @@ STRIP-COMPONENTS is number of path components to strip during extraction."
                 when matching-asset return matching-asset)))
 
           (unless selected-asset
-            (ls-installer--error
+            (lsp-installer--error
              "No suitable binary found for %s %s in %s. OS-filtered assets: %s"
              (car os-patterns)
              (car arch-patterns)
@@ -210,14 +210,14 @@ STRIP-COMPONENTS is number of path components to strip during extraction."
           (setq download-url
                 (cdr (assq 'browser_download_url selected-asset)))
 
-          (ls-installer--message
+          (lsp-installer--message
            "Selected asset: %s" (cdr (assq 'name selected-asset)))
 
-          (ls-installer--install-binary server-name download-url
+          (lsp-installer--install-binary server-name download-url
                                         platform-executable-name
                                         target-subdir
                                         strip-components))))))
 
-(provide 'ls-installer-binary)
+(provide 'lsp-installer-binary)
 
-;;; ls-installer-binary.el ends here
+;;; lsp-installer-binary.el ends here
