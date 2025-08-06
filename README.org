@@ -49,6 +49,63 @@ It manages language server definitions for each language in an eld file and adds
 
 See =servers.eld= for details.
 
+* Server Configuration Format
+
+All servers use a unified configuration format in =servers.eld=:
+
+#+BEGIN_SRC emacs-lisp
+( :name "server-name"               ; Unique server identifier
+  :description "Server description" ; Human readable description  
+  :install-method "method"          ; Installation method (see below)
+  :source "source"                  ; Package name, repo, or URL
+  :executable "executable"          ; Executable name/path
+  :version "version"                ; Package version (optional)
+  :options (:key value ...)         ; Method-specific options (optional)
+  :lsp-config (...))                ; LSP configuration
+#+END_SRC
+
+** Installation Methods
+
+- =npm= - Install via npm (Node.js packages)
+  - =:source= - npm package name (e.g., "typescript-language-server")
+  - =:executable= - executable name
+  
+- =pip= - Install via pip (Python packages) 
+  - =:source= - pip package name (e.g., "python-lsp-server")
+  - =:executable= - executable name
+  
+- =go= - Install via go install (Go packages)
+  - =:source= - go package path (e.g., "golang.org/x/tools/gopls@latest")
+  - =:executable= - executable name
+  
+- =github= - Install from GitHub releases
+  - =:source= - GitHub repository (e.g., "rust-lang/rust-analyzer")
+  - =:executable= - executable name/path
+  - =:options= - =(:strip-components N)= to strip path components
+  
+- =binary= - Install from binary URL
+  - =:source= - Download URL
+  - =:executable= - executable name/path  
+  - =:options= - =(:target-subdir "dir" :strip-components N)=
+  
+- =dotnet= - Install via dotnet tool
+  - =:source= - dotnet tool name
+  - =:executable= - executable name
+
+** Example Configuration
+
+#+BEGIN_SRC emacs-lisp
+( :name "typescript-language-server"
+  :description "TypeScript & JavaScript language server"
+  :install-method "npm"
+  :source "typescript-language-server"
+  :executable "typescript-language-server"
+  :lsp-config
+  ( :server-id 'ts-ls
+    :major-modes '(typescript-mode js-mode)
+    :priority 0))
+#+END_SRC
+
 *Note:* I am a Windows user, so operation on Linux or Mac is unconfirmed.
 
 * JDTLS Support
@@ -77,7 +134,7 @@ To use JDTLS (Java Development Tools Language Server) with =lsp-installer=, you 
 A. Please check if required commands (=npm=, =pip=, =go=, =dotnet=, =curl=, =wget=, etc.) are in PATH.
 
 ** Q. Want to add a server
-A. Please add a definition in plist format to =servers.eld=. The main body will automatically detect it.
+A. Please add a definition in the unified format to =servers.eld=. See the configuration format section below.
 
 ** Q. Want to install from package managers other than those mentioned above
 A. Please create an issue. We will consider support.

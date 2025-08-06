@@ -76,62 +76,61 @@
         (lsp-installer--message "Installation cancelled")
         (return-from lsp-installer-install-server)))
 
-    (let ((install-script (plist-get config :install-script))
-          (package-name
-           (or (plist-get config :package-name) server-name))
-          (version (plist-get config :version))
-          (binary-url (plist-get config :binary-url))
-          (github-repo (plist-get config :github-repo))
-          (asset-pattern (plist-get config :asset-pattern))
-          (executable-name (plist-get config :executable-name))
-          (target-subdir (plist-get config :target-subdir))
-          (strip-components (plist-get config :strip-components)))
+    (let* ((install-method (plist-get config :install-method))
+           (source (plist-get config :source))
+           (executable (plist-get config :executable))
+           (version (plist-get config :version))
+           (options (plist-get config :options))
+           ;; Extract options safely
+           (asset-pattern (and options (plist-get options :asset-pattern)))
+           (target-subdir (and options (plist-get options :target-subdir)))
+           (strip-components (and options (plist-get options :strip-components))))
 
       (cond
-       ((eq install-script 'ls--install-npm-package)
+       ((string= install-method "npm")
         (lsp-installer--install-npm-package
-         server-name package-name version))
-       ((eq install-script 'ls--install-pip-package)
+         server-name source version))
+       ((string= install-method "pip")
         (lsp-installer--install-pip-package
-         server-name package-name version))
-       ((eq install-script 'ls--install-go-binary)
-        (unless package-name
+         server-name source version))
+       ((string= install-method "go")
+        (unless source
           (lsp-installer--error
-           "package-name not specified for Go binary installation"))
-        (lsp-installer--install-go-binary server-name package-name))
-       ((eq install-script 'ls--install-dotnet-tool)
+           "source not specified for Go binary installation"))
+        (lsp-installer--install-go-binary server-name source))
+       ((string= install-method "dotnet")
         (lsp-installer--install-dotnet-tool
-         server-name package-name version))
-       ((eq install-script 'ls--install-binary)
+         server-name source version))
+       ((string= install-method "binary")
         (if (string= server-name "jdtls")
             ;; Special handling for JDT LS
             (lsp-installer--install-jdtls
-             server-name binary-url target-subdir)
+             server-name source target-subdir)
           ;; Standard binary installation
           (progn
-            (unless binary-url
+            (unless source
               (lsp-installer--error
-               "binary-url not specified for binary installation"))
+               "source not specified for binary installation"))
             (lsp-installer--install-binary
              server-name
-             binary-url
-             executable-name
+             source
+             executable
              target-subdir
              strip-components))))
-       ((eq install-script 'ls--install-github-release)
-        (unless github-repo
+       ((string= install-method "github")
+        (unless source
           (lsp-installer--error
-           "github-repo not specified for GitHub release installation"))
+           "source not specified for GitHub release installation"))
         (lsp-installer--install-github-release
          server-name
-         github-repo
+         source
          asset-pattern
-         executable-name
+         executable
          target-subdir
          strip-components))
        (t
         (lsp-installer--error
-         "Unsupported install script: %s" install-script))))))
+         "Unsupported install method: %s" install-method))))))
 
 ;;;###autoload
 (defun lsp-installer-uninstall-server (server-name)
