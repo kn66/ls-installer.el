@@ -13,7 +13,7 @@
 (defun lsp-installer--install-go-binary (server-name package-name)
   "Install Go binary using 'go install' command for SERVER-NAME.
 PACKAGE-NAME is the Go package to install."
-  (unless (lsp-installer--executable-find "go")
+  (unless (lsp-installer--executable-find lsp-installer-go-executable)
     (lsp-installer--error "Go compiler not found in PATH"))
 
   (let* ((server-dir
@@ -34,7 +34,7 @@ PACKAGE-NAME is the Go package to install."
 
       ;; Install the Go package
       (let ((exit-code
-             (call-process "go"
+             (call-process lsp-installer-go-executable
                            nil
                            "*lsp-installer-go*"
                            t

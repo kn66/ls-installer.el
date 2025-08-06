@@ -14,7 +14,7 @@
     (server-name package-name &optional version)
   "Install .NET tool PACKAGE-NAME for SERVER-NAME with optional VERSION."
   (unless (lsp-installer--executable-find
-           lsp-installer--dotnet-executable)
+           lsp-installer-dotnet-executable)
     (lsp-installer--error ".NET SDK not found in PATH"))
 
   (let* ((server-dir
@@ -31,7 +31,7 @@
 
     ;; Install the .NET tool to a specific directory
     (let ((exit-code
-           (call-process lsp-installer--dotnet-executable
+           (call-process lsp-installer-dotnet-executable
                          nil
                          "*lsp-installer-dotnet*"
                          t
@@ -61,7 +61,7 @@
       (lsp-installer--message
        "Uninstalling .NET tool %s..." package-name)
       (let ((exit-code
-             (call-process lsp-installer--dotnet-executable
+             (call-process lsp-installer-dotnet-executable
                            nil
                            "*lsp-installer-dotnet*"
                            t

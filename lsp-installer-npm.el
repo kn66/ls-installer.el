@@ -12,10 +12,9 @@
 
 ;;; NPM package installation functions
 
-(defun lsp-installer--install-npm-package
-    (server-name package-name &optional version)
+(defun lsp-installer--install-npm-package (server-name package-name &optional version)
   "Install npm package PACKAGE-NAME for SERVER-NAME with optional VERSION."
-  (unless (lsp-installer--executable-find lsp-installer--npm-executable)
+  (unless (lsp-installer--executable-find lsp-installer-npm-executable)
     (lsp-installer--error "npm not found in PATH"))
 
   (let* ((server-dir
@@ -39,7 +38,7 @@
 
       ;; Install the package
       (let ((exit-code
-             (call-process lsp-installer--npm-executable
+             (call-process lsp-installer-npm-executable
                            nil
                            "*lsp-installer-npm*"
                            t
@@ -65,7 +64,7 @@
        "Uninstalling npm package %s..." package-name)
       (let ((default-directory server-dir))
         (let ((exit-code
-               (call-process lsp-installer--npm-executable
+               (call-process lsp-installer-npm-executable
                              nil
                              "*lsp-installer-npm*"
                              t
