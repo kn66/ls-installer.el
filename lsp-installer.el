@@ -712,12 +712,21 @@
 ;;;###autoload
 (defun lsp-installer-install-server (server-name)
   "Install language server SERVER-NAME."
-  (interactive (list
-                (completing-read
-                 "Install server: "
-                 (lsp-installer--list-available-servers)
-                 nil
-                 t)))
+  (interactive (let ((available-servers
+                      (lsp-installer--list-available-servers)))
+                 (list
+                  (completing-read
+                   "Install server: " available-servers
+                   nil t nil 'lsp-installer-server-history nil))))
+  ;; Debug: show what server name we actually received
+  (lsp-installer--message "Attempting to install server: %s"
+                          server-name)
+  ;; Validate that the server name is actually in our available list
+  (let ((available-servers (lsp-installer--list-available-servers)))
+    (unless (member server-name available-servers)
+      (lsp-installer--error
+       "Server %s is not in the available servers list. Available: %s"
+       server-name (mapconcat 'identity available-servers ", "))))
   (let ((config (lsp-installer--get-server-config server-name)))
     (lsp-installer--validate-config server-name config)
     (when (and (lsp-installer--server-installed-p server-name)
@@ -737,7 +746,10 @@
                  "Uninstall server: "
                  (lsp-installer--list-installed-servers)
                  nil
-                 t)))
+                 t
+                 nil
+                 'lsp-installer-server-history
+                 nil)))
   (unless (lsp-installer--server-installed-p server-name)
     (lsp-installer--error "Server %s is not installed" server-name))
   (when (y-or-n-p (format "Really uninstall server %s? " server-name))
@@ -756,7 +768,10 @@
                  "Update server: "
                  (lsp-installer--list-installed-servers)
                  nil
-                 t)))
+                 t
+                 nil
+                 'lsp-installer-server-history
+                 nil)))
   (let ((config (lsp-installer--get-server-config server-name)))
     (lsp-installer--validate-config server-name config)
     (unless (lsp-installer--server-installed-p server-name)
