@@ -123,38 +123,6 @@
     (let ((files (directory-files directory nil "^[^.]")))
       (null files))))
 
-(defun lsp-installer--move-executables-to-bin (extract-dir bin-dir)
-  "Move executable files from EXTRACT-DIR root and nested dirs to BIN-DIR."
-  (when (file-directory-p extract-dir)
-    (let ((moved-count 0)
-          (search-dirs (list extract-dir)))
-      ;; Add common nested binary directories to search
-      (dolist (nested-dir '("server/bin" "bin" "Scripts"))
-        (let ((nested-path (expand-file-name nested-dir extract-dir)))
-          (when (file-directory-p nested-path)
-            (push nested-path search-dirs))))
-      ;; Search all directories for executables
-      (dolist (search-dir search-dirs)
-        (when (file-directory-p search-dir)
-          (dolist (file (directory-files search-dir nil "^[^.]"))
-            (let ((full-path (expand-file-name file search-dir)))
-              (when (and (file-regular-p full-path)
-                         (file-executable-p full-path)
-                         ;; Only move files that look like executables
-                         (or (string-match-p "\\.exe\\'" file)
-                             (string-match-p "\\.bat\\'" file)
-                             (not (string-match-p "\\." file))))
-                (let ((bin-path (expand-file-name file bin-dir)))
-                  (unless (file-exists-p bin-path)
-                    (copy-file full-path bin-path)
-                    (when (not (string= search-dir extract-dir))
-                      ;; Only delete if we're copying from a nested directory
-                      (delete-file full-path))
-                    (cl-incf moved-count))))))))
-      (when (> moved-count 0)
-        (lsp-installer--message
-         "Moved %d executable(s) to bin directory"
-         moved-count)))))
 
 ;;; Configuration management
 
@@ -240,6 +208,22 @@
 
 ;;; Path management
 
+(defun lsp-installer--expand-path-dirs (server-dir path-dirs)
+  "Expand PATH-DIRS with wildcard support relative to SERVER-DIR."
+  (let ((expanded-paths '()))
+    (dolist (path path-dirs)
+      (let ((full-pattern (expand-file-name path server-dir)))
+        (if (string-match-p "[*?]" path)
+            ;; Pattern contains wildcards - expand them
+            (let ((matches (file-expand-wildcards full-pattern)))
+              (dolist (match matches)
+                (when (file-directory-p match)
+                  (push match expanded-paths))))
+          ;; Regular path - add if directory exists
+          (when (file-directory-p full-pattern)
+            (push full-pattern expanded-paths)))))
+    (nreverse expanded-paths)))
+
 (defun lsp-installer--add-to-exec-path (server-name)
   "Add SERVER-NAME's bin directories to exec-path."
   (let* ((server-dir
@@ -247,10 +231,7 @@
          (config (lsp-installer--get-server-config server-name))
          (path-dirs (plist-get config :path-dirs))
          (bin-paths
-          (mapcar
-           (lambda (path)
-             (expand-file-name path server-dir))
-           path-dirs))
+          (lsp-installer--expand-path-dirs server-dir path-dirs))
          (added 0))
     (dolist (path bin-paths)
       (when (and (file-directory-p path)
@@ -306,12 +287,10 @@
          (pip-exe (lsp-installer--executable-find 'pip))
          (python-exe
           (or (executable-find "python3") (executable-find "python")))
-         (venv-dir (expand-file-name "venv" server-dir))
-         (bin-dir (expand-file-name "bin" server-dir)))
+         (venv-dir (expand-file-name "venv" server-dir)))
     (unless (and pip-exe python-exe)
       (lsp-installer--error "pip/python not found in PATH"))
     (lsp-installer--ensure-directory server-dir)
-    (lsp-installer--ensure-directory bin-dir)
     ;; Create virtual environment
     (let ((exit-code
            (call-process python-exe
@@ -340,33 +319,8 @@
                           package-spec)))
       (unless (= exit-code 0)
         (lsp-installer--error "pip install failed (exit code: %d)"
-                              exit-code)))
-    ;; Create wrapper scripts
-    (lsp-installer--create-pip-wrappers server-name venv-dir)))
+                              exit-code)))))
 
-(defun lsp-installer--create-pip-wrappers (server-name venv-dir)
-  "Create wrapper scripts for Python executables in VENV-DIR."
-  (let* ((server-dir
-          (lsp-installer--get-server-install-dir server-name))
-         (bin-dir (expand-file-name "bin" server-dir))
-         (venv-bin
-          (expand-file-name (if (eq system-type 'windows-nt)
-                                "Scripts"
-                              "bin")
-                            venv-dir)))
-    (when (file-directory-p venv-bin)
-      (dolist (file (directory-files venv-bin))
-        (let ((full-path (expand-file-name file venv-bin)))
-          (when (and (file-executable-p full-path)
-                     (not
-                      (member
-                       file '("." ".." "python" "pip" "activate")))
-                     (not (string-match-p "python\\|pip" file)))
-            (let ((wrapper (expand-file-name file bin-dir)))
-              (with-temp-file wrapper
-                (insert
-                 "#!/bin/bash\nexec \"" full-path "\" \"$@\"\n"))
-              (lsp-installer--make-executable wrapper))))))))
 
 (defun lsp-installer--install-go (server-name source)
   "Install Go binary SOURCE for SERVER-NAME."
@@ -409,12 +363,12 @@
         (lsp-installer--error
          "gem executable test failed (exit code: %d). gem may not be working properly."
          test-exit-code)))
-    (lsp-installer--ensure-directory bin-dir)
     ;; Add version argument if specified
     (when version
       (setq install-args
             (append install-args (list "--version" version))))
     ;; Add install directory arguments
+    (lsp-installer--ensure-directory bin-dir)
     (setq install-args
           (append
            install-args
@@ -620,6 +574,10 @@
     (when (string= server-name "omnisharp")
       (when (string-match-p "http\\|mono" name)
         (cl-decf score 15)))
+    (when (string= server-name "clangd")
+      ;; Prefer main clangd package over indexing tools
+      (when (string-match-p "indexing.tools" name)
+        (cl-decf score 30)))
     score))
 
 (defun lsp-installer--install-github
@@ -668,7 +626,6 @@
   "Install binary from URL for SERVER-NAME."
   (let* ((server-dir
           (lsp-installer--get-server-install-dir server-name))
-         (bin-dir (expand-file-name "bin" server-dir))
          (temp-dir (make-temp-file "lsp-installer-" t))
          (filename
           (file-name-nondirectory (car (split-string url "?"))))
@@ -682,106 +639,33 @@
     (unwind-protect
         (progn
           (lsp-installer--ensure-directory server-dir)
-          (lsp-installer--ensure-directory bin-dir)
           (lsp-installer--download-file url temp-file)
           (if (or (string-match-p "\\.tar\\.gz\\'" filename)
                   (string-match-p "\\.tar\\.xz\\'" filename)
                   (string-match-p "\\.tgz\\'" filename)
                   (string-match-p "\\.zip\\'" filename))
-              ;; Archive - extract it
+              ;; Archive - extract it and preserve structure
               (progn
                 (lsp-installer--extract-archive temp-file extract-dir
                                                 strip-components)
-                ;; Copy executables from root to bin if they're not in bin
-                (lsp-installer--move-executables-to-bin
-                 extract-dir bin-dir)
-                ;; Handle executable setup
+                ;; Make executable files executable
                 (when executable
                   (let ((exec-path
                          (expand-file-name executable extract-dir)))
                     (when (file-exists-p exec-path)
-                      (lsp-installer--make-executable exec-path)
-                      ;; Create symlink in bin if needed
-                      (let ((bin-path
-                             (expand-file-name
-                              (file-name-nondirectory executable)
-                              bin-dir)))
-                        (unless (file-exists-p bin-path)
-                          (make-symbolic-link
-                           exec-path bin-path)))))))
-            ;; Single file - copy to bin
+                      (lsp-installer--make-executable exec-path)))))
+            ;; Single file - copy to extract directory with original name
             (let ((target-file
                    (expand-file-name
                     (or (file-name-nondirectory executable) filename)
-                    bin-dir)))
+                    extract-dir)))
+              (lsp-installer--ensure-directory extract-dir)
               (copy-file temp-file target-file t)
               (lsp-installer--make-executable target-file))))
       ;; Cleanup
       (when (file-exists-p temp-dir)
         (delete-directory temp-dir t)))))
 
-;;; JDTLS special handling
-
-(defun lsp-installer--install-jdtls (server-name url options)
-  "Install Eclipse JDT Language Server with proper setup."
-  (let* ((server-dir
-          (lsp-installer--get-server-install-dir server-name))
-         (target-subdir (plist-get options :target-subdir)))
-    ;; Install as binary first
-    (lsp-installer--install-binary server-name url "" options)
-    ;; Create wrapper script
-    (lsp-installer--create-jdtls-wrapper
-     server-name
-     (if target-subdir
-         (expand-file-name target-subdir server-dir)
-       server-dir))))
-
-(defun lsp-installer--create-jdtls-wrapper (server-name jdtls-dir)
-  "Create wrapper script for JDTLS in SERVER-NAME installation."
-  (let* ((server-dir
-          (lsp-installer--get-server-install-dir server-name))
-         (bin-dir (expand-file-name "bin" server-dir))
-         (wrapper (expand-file-name "jdtls" bin-dir))
-         (config-dir
-          (cond
-           ((eq system-type 'darwin)
-            "config_mac")
-           ((eq system-type 'gnu/linux)
-            "config_linux")
-           ((eq system-type 'windows-nt)
-            "config_win")
-           (t
-            "config_linux")))
-         (launcher-jars
-          (file-expand-wildcards
-           (expand-file-name
-            "plugins/org.eclipse.equinox.launcher_*.jar"
-            jdtls-dir))))
-    (unless launcher-jars
-      (lsp-installer--error "Could not find Eclipse launcher jar"))
-    (with-temp-file wrapper
-      (insert "#!/bin/bash\n")
-      (insert "JAVA=java\n")
-      (insert
-       "[[ -n \"$JAVA_HOME\" ]] && JAVA=\"$JAVA_HOME/bin/java\"\n")
-      (insert "WORKSPACE=\"${1:-$PWD}\"\n")
-      (insert "shift\n")
-      (insert
-       (format "exec \"$JAVA\" -Xmx1G --add-modules=ALL-SYSTEM \\\n"))
-      (insert "  --add-opens java.base/java.util=ALL-UNNAMED \\\n")
-      (insert "  --add-opens java.base/java.lang=ALL-UNNAMED \\\n")
-      (insert
-       "  -Declipse.application=org.eclipse.jdt.ls.core.id1 \\\n")
-      (insert "  -Dosgi.bundles.defaultStartLevel=4 \\\n")
-      (insert
-       "  -Declipse.product=org.eclipse.jdt.ls.core.product \\\n")
-      (insert (format "  -jar \"%s\" \\\n" (car launcher-jars)))
-      (insert
-       (format "  -configuration \"%s\" \\\n"
-               (expand-file-name config-dir jdtls-dir)))
-      (insert "  -data \"$HOME/.cache/jdtls-workspace\" \\\n")
-      (insert "  \"$@\"\n"))
-    (lsp-installer--make-executable wrapper)))
 
 ;;; Main installation dispatcher
 
@@ -792,6 +676,12 @@
          (executable (plist-get config :executable))
          (version (plist-get config :version))
          (options (plist-get config :options)))
+    ;; Auto-cleanup: remove existing installation if present
+    (when (lsp-installer--server-installed-p server-name)
+      (lsp-installer--message "Removing existing %s installation..." server-name)
+      (let ((server-dir (lsp-installer--get-server-install-dir server-name)))
+        (when (file-directory-p server-dir)
+          (delete-directory server-dir t))))
     (lsp-installer--message "Installing %s via %s..."
                             server-name
                             method)
@@ -812,10 +702,8 @@
        (lsp-installer--install-github server-name source executable
                                       options))
       ((string= method "binary")
-       (if (string= server-name "jdtls")
-           (lsp-installer--install-jdtls server-name source options)
-         (lsp-installer--install-binary server-name source executable
-                                        options)))
+       (lsp-installer--install-binary server-name source executable
+                                      options))
       (t
        (lsp-installer--error "Unsupported install method: %s"
                              method)))
@@ -845,13 +733,6 @@
        server-name (mapconcat 'identity available-servers ", "))))
   (let ((config (lsp-installer--get-server-config server-name)))
     (lsp-installer--validate-config server-name config)
-    (when (and (lsp-installer--server-installed-p server-name)
-               (not
-                (y-or-n-p
-                 (format "Server %s already installed. Reinstall? "
-                         server-name))))
-      (lsp-installer--message "Installation cancelled")
-      (cl-return-from lsp-installer-install-server))
     (lsp-installer--dispatch-installation server-name config)))
 
 ;;;###autoload
@@ -967,10 +848,7 @@
             (lsp-installer--get-server-install-dir server-name))
            (path-dirs (plist-get config :path-dirs))
            (bin-paths
-            (mapcar
-             (lambda (path)
-               (expand-file-name path server-dir))
-             path-dirs)))
+            (lsp-installer--expand-path-dirs server-dir path-dirs)))
       (when executable
         (or (cl-some
              (lambda (path)

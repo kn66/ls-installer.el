@@ -39,7 +39,7 @@
    :install-method "pip"
    :source "python-lsp-server"
    :executable "pylsp"
-   :path-dirs ("bin")
+   :path-dirs ("venv/Scripts" "venv/bin")
    :lsp-config
    ( :server-id 'pylsp
      :major-modes '(python-mode python-ts-mode)
@@ -172,7 +172,7 @@
    :install-method "github"
    :source "clangd/clangd"
    :executable "clangd"
-   :path-dirs ("bin")
+   :path-dirs ("clangd_*/bin")
    :options (:strip-components 1)
    :lsp-config
    ( :server-id 'clangd
@@ -207,8 +207,8 @@
    :description "Java language server"
    :install-method "binary"
    :source "https://download.eclipse.org/jdtls/milestones/1.40.0/jdt-language-server-1.40.0-202409261450.tar.gz"
-   :executable "jdtls"
-   :path-dirs ("bin")
+   :executable "plugins/org.eclipse.equinox.launcher_*.jar"
+   :path-dirs ("eclipse.jdt.ls")
    :options (:target-subdir "eclipse.jdt.ls" :strip-components 0)
    :lsp-config
    ( :server-id 'jdtls
@@ -331,7 +331,7 @@
    :install-method "pip"
    :source "jedi-language-server"
    :executable "jedi-language-server"
-   :path-dirs ("bin")
+   :path-dirs ("venv/Scripts" "venv/bin")
    :lsp-config
    ( :server-id 'jedi-ls
      :major-modes '(python-mode python-ts-mode)
@@ -342,7 +342,7 @@
    :install-method "pip"
    :source "cmake-language-server"
    :executable "cmake-language-server"
-   :path-dirs ("bin")
+   :path-dirs ("venv/Scripts" "venv/bin")
    :lsp-config
    ( :server-id 'cmake-ls
      :major-modes '(cmake-mode)
@@ -353,7 +353,7 @@
    :install-method "pip"
    :source "fortls"
    :executable "fortls"
-   :path-dirs ("bin")
+   :path-dirs ("venv/Scripts" "venv/bin")
    :lsp-config
    ( :server-id 'fortls
      :major-modes '(fortran-mode f90-mode)
