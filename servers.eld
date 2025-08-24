@@ -9,6 +9,7 @@
 ;; :executable - Executable name/path (always required)
 ;; :version - Package version (optional)
 ;; :options - Method-specific options (optional)
+;; :path-dirs - List of directories to add to exec-path (relative to server install dir, required)
 ;; :lsp-config - LSP configuration
 
 (( :name "typescript-language-server"
@@ -16,6 +17,7 @@
    :install-method "npm"
    :source "typescript-language-server"
    :executable "typescript-language-server"
+   :path-dirs ("node_modules/.bin")
    :lsp-config
    ( :server-id 'ts-ls
      :major-modes '(typescript-mode typescript-ts-mode js-mode js-ts-mode)
@@ -26,6 +28,7 @@
    :install-method "npm"
    :source "pyright"
    :executable "pyright"
+   :path-dirs ("node_modules/.bin")
    :lsp-config
    ( :server-id 'pyright
      :major-modes '(python-mode python-ts-mode)
@@ -36,6 +39,7 @@
    :install-method "pip"
    :source "python-lsp-server"
    :executable "pylsp"
+   :path-dirs ("bin")
    :lsp-config
    ( :server-id 'pylsp
      :major-modes '(python-mode python-ts-mode)
@@ -46,6 +50,7 @@
    :install-method "github"
    :source "rust-lang/rust-analyzer"
    :executable "rust-analyzer"
+   :path-dirs (".")
    :lsp-config
    ( :server-id 'rust-analyzer
      :major-modes '(rust-mode rust-ts-mode)
@@ -56,6 +61,7 @@
    :install-method "go"
    :source "golang.org/x/tools/gopls@latest"
    :executable "gopls"
+   :path-dirs ("bin")
    :lsp-config
    ( :server-id 'gopls
      :major-modes '(go-mode go-ts-mode)
@@ -66,6 +72,7 @@
    :install-method "go"
    :source "github.com/nametake/golangci-lint-langserver@latest"
    :executable "golangci-lint-langserver"
+   :path-dirs ("bin")
    :lsp-config
    ( :server-id 'golangci-lint-ls
      :major-modes '(go-mode go-ts-mode)
@@ -76,6 +83,7 @@
    :install-method "go"
    :source "github.com/ramya-rao-a/go-outline@latest"
    :executable "go-outline"
+   :path-dirs ("bin")
    :lsp-config
    ( :server-id 'go-outline
      :major-modes '(go-mode go-ts-mode)
@@ -86,6 +94,7 @@
    :install-method "go"
    :source "github.com/fatih/gomodifytags@latest"
    :executable "gomodifytags"
+   :path-dirs ("bin")
    :lsp-config
    ( :server-id 'gomodifytags
      :major-modes '(go-mode go-ts-mode)
@@ -96,6 +105,7 @@
    :install-method "go"
    :source "github.com/cweill/gotests/...@latest"
    :executable "gotests"
+   :path-dirs ("bin")
    :lsp-config
    ( :server-id 'gotests
      :major-modes '(go-mode go-ts-mode)
@@ -106,6 +116,7 @@
    :install-method "go"
    :source "github.com/josharian/impl@latest"
    :executable "impl"
+   :path-dirs ("bin")
    :lsp-config
    ( :server-id 'impl
      :major-modes '(go-mode go-ts-mode)
@@ -116,6 +127,7 @@
    :install-method "go"
    :source "golang.org/x/tools/cmd/goimports@latest"
    :executable "goimports"
+   :path-dirs ("bin")
    :lsp-config
    ( :server-id 'goimports
      :major-modes '(go-mode go-ts-mode)
@@ -126,6 +138,7 @@
    :install-method "go"
    :source "mvdan.cc/gofumpt@latest"
    :executable "gofumpt"
+   :path-dirs ("bin")
    :lsp-config
    ( :server-id 'gofumpt
      :major-modes '(go-mode go-ts-mode)
@@ -136,6 +149,7 @@
    :install-method "go"
    :source "honnef.co/go/tools/cmd/staticcheck@latest"
    :executable "staticcheck"
+   :path-dirs ("bin")
    :lsp-config
    ( :server-id 'staticcheck
      :major-modes '(go-mode go-ts-mode)
@@ -146,6 +160,7 @@
    :install-method "github"
    :source "golangci/golangci-lint"
    :executable "golangci-lint"
+   :path-dirs (".")
    :options (:strip-components 1)
    :lsp-config
    ( :server-id 'golangci-lint
@@ -156,7 +171,8 @@
    :description "C/C++ language server"
    :install-method "github"
    :source "clangd/clangd"
-   :executable "bin/clangd"
+   :executable "clangd"
+   :path-dirs ("bin")
    :options (:strip-components 1)
    :lsp-config
    ( :server-id 'clangd
@@ -168,6 +184,7 @@
    :install-method "github"
    :source "zigtools/zls"
    :executable "zls"
+   :path-dirs (".")
    :options (:strip-components 1)
    :lsp-config
    ( :server-id 'zls
@@ -178,7 +195,8 @@
    :description "Lua language server"
    :install-method "github"
    :source "LuaLS/lua-language-server"
-   :executable "bin/lua-language-server"
+   :executable "lua-language-server"
+   :path-dirs ("bin")
    :options (:strip-components 0)
    :lsp-config
    ( :server-id 'lua-ls
@@ -189,7 +207,8 @@
    :description "Java language server"
    :install-method "binary"
    :source "https://download.eclipse.org/jdtls/milestones/1.40.0/jdt-language-server-1.40.0-202409261450.tar.gz"
-   :executable "eclipse.jdt.ls/bin/jdtls"
+   :executable "jdtls"
+   :path-dirs ("bin")
    :options (:target-subdir "eclipse.jdt.ls" :strip-components 0)
    :lsp-config
    ( :server-id 'jdtls
@@ -201,6 +220,7 @@
    :install-method "dotnet"
    :source "csharp-ls"
    :executable "csharp-ls"
+   :path-dirs ("tools")
    :lsp-config
    ( :server-id 'csharp-ls
      :major-modes '(csharp-mode csharp-ts-mode)
@@ -211,6 +231,7 @@
    :install-method "github"
    :source "OmniSharp/omnisharp-roslyn"
    :executable "OmniSharp"
+   :path-dirs (".")
    :options (:strip-components 0)
    :lsp-config
    ( :server-id 'omnisharp
@@ -222,6 +243,7 @@
    :install-method "npm"
    :source "vscode-langservers-extracted"
    :executable "vscode-html-language-server"
+   :path-dirs ("node_modules/.bin")
    :lsp-config
    ( :server-id 'html-ls
      :major-modes '(html-mode web-mode mhtml-mode)
@@ -232,6 +254,7 @@
    :install-method "npm"
    :source "vscode-langservers-extracted"
    :executable "vscode-css-language-server"
+   :path-dirs ("node_modules/.bin")
    :lsp-config
    ( :server-id 'css-ls
      :major-modes '(css-mode scss-mode sass-mode less-css-mode)
@@ -242,6 +265,7 @@
    :install-method "npm"
    :source "vscode-langservers-extracted"
    :executable "vscode-json-language-server"
+   :path-dirs ("node_modules/.bin")
    :lsp-config
    ( :server-id 'json-ls
      :major-modes '(json-mode json-ts-mode)
@@ -252,6 +276,7 @@
    :install-method "npm"
    :source "@vue/language-server"
    :executable "vue-language-server"
+   :path-dirs ("node_modules/.bin")
    :lsp-config
    ( :server-id 'vue-ls
      :major-modes '(vue-mode)
@@ -262,6 +287,7 @@
    :install-method "npm"
    :source "svelte-language-server"
    :executable "svelte-language-server"
+   :path-dirs ("node_modules/.bin")
    :lsp-config
    ( :server-id 'svelte-ls
      :major-modes '(svelte-mode)
@@ -272,6 +298,7 @@
    :install-method "npm"
    :source "bash-language-server"
    :executable "bash-language-server"
+   :path-dirs ("node_modules/.bin")
    :lsp-config
    ( :server-id 'bash-ls
      :major-modes '(sh-mode shell-script-mode)
@@ -282,6 +309,7 @@
    :install-method "npm"
    :source "yaml-language-server"
    :executable "yaml-language-server"
+   :path-dirs ("node_modules/.bin")
    :lsp-config
    ( :server-id 'yaml-ls
      :major-modes '(yaml-mode yaml-ts-mode)
@@ -292,6 +320,7 @@
    :install-method "npm"
    :source "diagnostic-languageserver"
    :executable "diagnostic-languageserver"
+   :path-dirs ("node_modules/.bin")
    :lsp-config
    ( :server-id 'diagnostic-ls
      :major-modes '(text-mode)
@@ -302,6 +331,7 @@
    :install-method "pip"
    :source "jedi-language-server"
    :executable "jedi-language-server"
+   :path-dirs ("bin")
    :lsp-config
    ( :server-id 'jedi-ls
      :major-modes '(python-mode python-ts-mode)
@@ -312,6 +342,7 @@
    :install-method "pip"
    :source "cmake-language-server"
    :executable "cmake-language-server"
+   :path-dirs ("bin")
    :lsp-config
    ( :server-id 'cmake-ls
      :major-modes '(cmake-mode)
@@ -322,6 +353,7 @@
    :install-method "pip"
    :source "fortls"
    :executable "fortls"
+   :path-dirs ("bin")
    :lsp-config
    ( :server-id 'fortls
      :major-modes '(fortran-mode f90-mode)
@@ -332,6 +364,7 @@
    :install-method "npm"
    :source "intelephense"
    :executable "intelephense"
+   :path-dirs ("node_modules/.bin")
    :lsp-config
    ( :server-id 'intelephense
      :major-modes '(php-mode)
@@ -342,6 +375,7 @@
    :install-method "github"
    :source "haskell/haskell-language-server"
    :executable "haskell-language-server"
+   :path-dirs (".")
    :options (:strip-components 1)
    :lsp-config
    ( :server-id 'haskell-ls
@@ -353,6 +387,7 @@
    :install-method "github"
    :source "elixir-lsp/elixir-ls"
    :executable "language_server.sh"
+   :path-dirs (".")
    :options (:strip-components 1)
    :lsp-config
    ( :server-id 'elixir-ls
@@ -363,7 +398,8 @@
    :description "Kotlin language server"
    :install-method "github"
    :source "fwcd/kotlin-language-server"
-   :executable "bin/kotlin-language-server"
+   :executable "kotlin-language-server"
+   :path-dirs ("server/bin")
    :options (:strip-components 1)
    :lsp-config
    ( :server-id 'kotlin-ls
@@ -375,6 +411,7 @@
    :install-method "github"
    :source "scalameta/metals"
    :executable "metals"
+   :path-dirs (".")
    :options (:strip-components 0)
    :lsp-config
    ( :server-id 'metals
@@ -386,6 +423,7 @@
    :install-method "npm"
    :source "dockerfile-language-server-nodejs"
    :executable "docker-langserver"
+   :path-dirs ("node_modules/.bin")
    :lsp-config
    ( :server-id 'dockerfile-ls
      :major-modes '(dockerfile-mode)
@@ -396,6 +434,7 @@
    :install-method "github"
    :source "tamasfe/taplo"
    :executable "taplo"
+   :path-dirs (".")
    :options (:strip-components 0)
    :lsp-config
    ( :server-id 'taplo
@@ -407,6 +446,7 @@
    :install-method "github"
    :source "hashicorp/terraform-ls"
    :executable "terraform-ls"
+   :path-dirs (".")
    :options (:strip-components 0)
    :lsp-config
    ( :server-id 'terraform-ls
@@ -418,6 +458,7 @@
    :install-method "npm"
    :source "@ansible/ansible-language-server"
    :executable "ansible-language-server"
+   :path-dirs ("node_modules/.bin")
    :lsp-config
    ( :server-id 'ansible-ls
      :major-modes '(yaml-mode)
@@ -428,6 +469,7 @@
    :install-method "github"
    :source "artempyanykh/marksman"
    :executable "marksman"
+   :path-dirs (".")
    :options (:strip-components 0)
    :lsp-config
    ( :server-id 'marksman
@@ -439,6 +481,7 @@
    :install-method "npm"
    :source "vscode-langservers-extracted"
    :executable "vscode-eslint-language-server"
+   :path-dirs ("node_modules/.bin")
    :lsp-config
    ( :server-id 'eslint-ls
      :major-modes '(js-mode js-ts-mode typescript-mode typescript-ts-mode)
@@ -449,6 +492,7 @@
    :install-method "npm"
    :source "emmet-ls"
    :executable "emmet-ls"
+   :path-dirs ("node_modules/.bin")
    :lsp-config
    ( :server-id 'emmet-ls
      :major-modes '(html-mode web-mode mhtml-mode css-mode scss-mode)
@@ -459,6 +503,7 @@
    :install-method "npm"
    :source "@prisma/language-server"
    :executable "prisma-language-server"
+   :path-dirs ("node_modules/.bin")
    :lsp-config
    ( :server-id 'prisma-ls
      :major-modes '(prisma-mode)
@@ -469,6 +514,7 @@
    :install-method "npm"
    :source "graphql-language-service-cli"
    :executable "graphql-lsp"
+   :path-dirs ("node_modules/.bin")
    :lsp-config
    ( :server-id 'graphql-ls
      :major-modes '(graphql-mode)
@@ -479,6 +525,7 @@
    :install-method "npm"
    :source "sql-language-server"
    :executable "sql-language-server"
+   :path-dirs ("node_modules/.bin")
    :lsp-config
    ( :server-id 'sql-ls
      :major-modes '(sql-mode)
@@ -489,6 +536,7 @@
    :install-method "gem"
    :source "solargraph"
    :executable "solargraph"
+   :path-dirs ("bin")
    :lsp-config
    ( :server-id 'solargraph
      :major-modes '(ruby-mode ruby-ts-mode)

@@ -207,16 +207,23 @@
     (lsp-installer--error "Server %s not found" server-name))
   (let ((method (plist-get config :install-method))
         (source (plist-get config :source))
-        (executable (plist-get config :executable)))
-    (unless (and method source executable)
-      (lsp-installer--error "Server %s: incomplete configuration"
-                            server-name))
+        (executable (plist-get config :executable))
+        (path-dirs (plist-get config :path-dirs)))
+    (unless (and method source executable path-dirs)
+      (lsp-installer--error
+       "Server %s: incomplete configuration (missing method, source, executable, or path-dirs)"
+       server-name))
     (unless (member
              method
              '("npm" "pip" "go" "dotnet" "gem" "binary" "github"))
       (lsp-installer--error "Server %s: unsupported method %s"
                             server-name
                             method))
+    ;; Validate :path-dirs - now required and must be a list of strings
+    (unless (and (listp path-dirs) (cl-every #'stringp path-dirs))
+      (lsp-installer--error
+       "Server %s: :path-dirs is required and must be a list of strings"
+       server-name))
     t))
 
 ;;; Unified error handling wrapper
@@ -237,12 +244,13 @@
   "Add SERVER-NAME's bin directories to exec-path."
   (let* ((server-dir
           (lsp-installer--get-server-install-dir server-name))
+         (config (lsp-installer--get-server-config server-name))
+         (path-dirs (plist-get config :path-dirs))
          (bin-paths
-          (list
-           (expand-file-name "bin" server-dir)
-           (expand-file-name "node_modules/.bin" server-dir)
-           (expand-file-name "tools" server-dir)
-           (expand-file-name "eclipse.jdt.ls/bin" server-dir)))
+          (mapcar
+           (lambda (path)
+             (expand-file-name path server-dir))
+           path-dirs))
          (added 0))
     (dolist (path bin-paths)
       (when (and (file-directory-p path)
@@ -957,11 +965,12 @@
            (executable (plist-get config :executable))
            (server-dir
             (lsp-installer--get-server-install-dir server-name))
+           (path-dirs (plist-get config :path-dirs))
            (bin-paths
-            (list
-             (expand-file-name "bin" server-dir)
-             (expand-file-name "node_modules/.bin" server-dir)
-             (expand-file-name "tools" server-dir))))
+            (mapcar
+             (lambda (path)
+               (expand-file-name path server-dir))
+             path-dirs)))
       (when executable
         (or (cl-some
              (lambda (path)
