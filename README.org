@@ -1,98 +1,129 @@
-* Overview
-=lsp-installer= is a package for Emacs that installs, updates, and removes language servers.
+* LSP Installer
 
-* Features
+=lsp-installer= is a simple, powerful language server installer for Emacs following KISS principles.
 
-It manages language server definitions for each language in an eld file and adds installed language servers to =exec-path= so they can be used by various LSP packages.
+** What It Does
 
-* Main Features
+Installs, updates, and manages 51+ language servers with zero configuration. All servers are automatically added to =exec-path= and ready to use with any LSP client (eglot, lsp-mode, etc.).
 
-*Note:* Still in development stage, only basic features are implemented.
+** Key Features
 
-- Install, uninstall, and update language servers
-- Check installation status of language servers
-- Add binary paths of installed servers to Emacs =exec-path=
-- Support various installation methods including =npm=, =pip=, =go=, =dotnet=, GitHub releases, regular binary archives, etc.
+- *Simple*: One command installs any language server
+- *Comprehensive*: Supports 51+ language servers across all major languages
+- *Multiple methods*: npm, pip, go, gem, dotnet, GitHub releases, binary archives
+- *Auto-cleanup*: Removes old installations automatically
+- *Cross-platform*: Windows, Linux, macOS with intelligent platform detection
+- *Wildcard paths*: Handles version-specific directories (e.g., =clangd_18.1.3/bin=)
+- *Zero config*: Works immediately after installation
 
-* Installation
-
-#+BEGIN_SRC emacs-lisp
-  (use-package lsp-installer
-    :vc ( :url "https://github.com/kn66/lsp-installer.el"
-          :rev :newest)
-    :config
-    (lsp-installer-setup))
-#+END_SRC
-
-* Usage
-
-| Command                           | Description                                              |
-|-----------------------------------+----------------------------------------------------------|
-| M-x lsp-installer-list-servers     | Display list of available & installed servers           |
-| M-x lsp-installer-install-server   | Install server by specifying server name                |
-| M-x lsp-installer-uninstall-server | Uninstall server by specifying server name              |
-| M-x lsp-installer-update-server    | Update server by specifying server name                 |
-| M-x lsp-installer-setup            | Add installed language servers to exec-path             |
-
-* Installable Language Servers
-
-- JavaScript/TypeScript: typescript-language-server
-- Python: pyright, pylsp, jedi-language-server
-- Go: gopls, golangci-lint, go-outline, etc.
-- Rust: rust-analyzer
-- C/C++: clangd
-- Java: jdtls
-- C#: csharp-ls, omnisharp
-- HTML/CSS/JSON: vscode-langservers-extracted
-- Lua: lua-language-server
-- Others: Bash, YAML, Svelte, Vue, CMake, Fortran, etc.
-
-See =servers.eld= for details.
-
-* Server Configuration Format
-
-All servers use a unified configuration format in =servers.eld=:
+** Installation
 
 #+BEGIN_SRC emacs-lisp
-( :name "server-name"               ; Unique server identifier
-  :description "Server description" ; Human readable description  
-  :install-method "method"          ; Installation method (see below)
-  :source "source"                  ; Package name, repo, or URL
-  :executable "executable"          ; Executable name/path
-  :version "version"                ; Package version (optional)
-  :options (:key value ...)         ; Method-specific options (optional)
-  :lsp-config (...))                ; LSP configuration
+(use-package lsp-installer
+  :vc ( :url "https://github.com/kn66/lsp-installer.el"
+        :rev :newest)
+  :config
+  (lsp-installer-setup))
 #+END_SRC
+
+** Quick Start
+
+#+BEGIN_SRC emacs-lisp
+;; Install a language server
+M-x lsp-installer-install-server RET typescript-language-server RET
+
+;; View all available servers
+M-x lsp-installer-list-servers
+#+END_SRC
+
+** Commands
+
+| Command                             | Description                              |
+|-------------------------------------+------------------------------------------|
+| =lsp-installer-install-server=      | Install a language server               |
+| =lsp-installer-uninstall-server=    | Uninstall a language server             |
+| =lsp-installer-update-server=       | Update a language server                |
+| =lsp-installer-list-servers=        | List all available/installed servers    |
+| =lsp-installer-setup=               | Add installed servers to exec-path      |
+
+** Supported Language Servers (51+)
+
+*** Programming Languages
+- *JavaScript/TypeScript*: typescript-language-server, vscode-eslint-language-server
+- *Python*: pyright, pylsp, jedi-language-server
+- *Rust*: rust-analyzer
+- *Go*: gopls, golangci-lint, goimports, gofumpt, staticcheck, go-outline
+- *C/C++*: clangd
+- *Java*: jdtls
+- *C#*: csharp-ls, omnisharp
+- *Ruby*: solargraph
+- *PHP*: intelephense
+- *Haskell*: haskell-language-server
+- *Elixir*: elixir-ls
+- *Kotlin*: kotlin-language-server
+- *Scala*: metals
+- *Zig*: zls
+- *Lua*: lua-language-server
+- *Fortran*: fortls
+
+*** Web Technologies
+- *HTML/CSS/JSON*: vscode-html-language-server, vscode-css-language-server, vscode-json-language-server
+- *Vue.js*: vue-language-server
+- *Svelte*: svelte-language-server
+- *Emmet*: emmet-ls
+- *GraphQL*: graphql-language-service-cli
+- *Prisma*: prisma-language-server
+
+*** DevOps & Configuration
+- *Docker*: dockerfile-language-server-nodejs
+- *YAML*: yaml-language-server, ansible-language-server
+- *TOML*: taplo
+- *Terraform*: terraform-ls
+- *Ansible*: ansible-language-server
+
+*** Other Languages & Tools
+- *Bash*: bash-language-server
+- *CMake*: cmake-language-server
+- *Markdown*: marksman
+- *SQL*: sql-language-server
+- *Diagnostic*: diagnostic-languageserver
+
+** Architecture
+
+=lsp-installer= follows KISS principles with a simple, unified approach:
+
+- *Configuration-driven*: All server definitions in =servers.eld=
+- *No hidden paths*: All paths explicitly specified in =:path-dirs=
+- *No file manipulation*: Preserves natural installation structures
+- *Auto-cleanup*: Removes old installations automatically
+- *Wildcard support*: Handles version-specific directories with patterns
 
 ** Installation Methods
 
-- =npm= - Install via npm (Node.js packages)
-  - =:source= - npm package name (e.g., "typescript-language-server")
-  - =:executable= - executable name
-  
-- =pip= - Install via pip (Python packages) 
-  - =:source= - pip package name (e.g., "python-lsp-server")
-  - =:executable= - executable name
-  
-- =go= - Install via go install (Go packages)
-  - =:source= - go package path (e.g., "golang.org/x/tools/gopls@latest")
-  - =:executable= - executable name
-  
-- =github= - Install from GitHub releases
-  - =:source= - GitHub repository (e.g., "rust-lang/rust-analyzer")
-  - =:executable= - executable name/path
-  - =:options= - =(:strip-components N)= to strip path components
-  
-- =binary= - Install from binary URL
-  - =:source= - Download URL
-  - =:executable= - executable name/path  
-  - =:options= - =(:target-subdir "dir" :strip-components N)=
-  
-- =dotnet= - Install via dotnet tool
-  - =:source= - dotnet tool name
-  - =:executable= - executable name
+| Method   | Description           | Example Source                           |
+|----------+-----------------------+------------------------------------------|
+| =npm=    | Node.js packages      | "typescript-language-server"            |
+| =pip=    | Python packages       | "python-lsp-server"                      |
+| =go=     | Go packages           | "golang.org/x/tools/gopls@latest"       |
+| =gem=    | Ruby gems             | "solargraph"                             |
+| =dotnet= | .NET tools            | "csharp-ls"                              |
+| =github= | GitHub releases       | "rust-lang/rust-analyzer"               |
+| =binary= | Direct URLs           | "https://example.com/server.tar.gz"     |
 
-** Example Configuration
+** Configuration Format
+
+#+BEGIN_SRC emacs-lisp
+( :name "server-name"                    ; Unique identifier
+  :description "Human readable name"     ; Description
+  :install-method "method"               ; Installation method
+  :source "source"                       ; Package/repo/URL
+  :executable "executable"               ; Executable name
+  :path-dirs ("bin" "scripts")           ; Paths to add to exec-path (required)
+  :options (:strip-components 1)         ; Method options (optional)
+  :lsp-config (...))                     ; LSP configuration
+#+END_SRC
+
+** Example: TypeScript Language Server
 
 #+BEGIN_SRC emacs-lisp
 ( :name "typescript-language-server"
@@ -100,47 +131,74 @@ All servers use a unified configuration format in =servers.eld=:
   :install-method "npm"
   :source "typescript-language-server"
   :executable "typescript-language-server"
+  :path-dirs ("node_modules/.bin")       ; npm installs binaries here
   :lsp-config
   ( :server-id 'ts-ls
     :major-modes '(typescript-mode js-mode)
     :priority 0))
 #+END_SRC
 
-*Note:* I am a Windows user, so operation on Linux or Mac is unconfirmed.
+** Wildcard Path Example
 
-* JDTLS Support
+#+BEGIN_SRC emacs-lisp
+( :name "clangd"
+  :description "C/C++ language server"
+  :install-method "github"
+  :source "clangd/clangd"
+  :executable "clangd"
+  :path-dirs ("clangd_*/bin")            ; Handles clangd_18.1.3/bin automatically
+  :options (:strip-components 1))
+#+END_SRC
 
-To use JDTLS (Java Development Tools Language Server) with =lsp-installer=, you need to ensure that the =eglot= package is installed and configured properly. The following steps will help you set it up:
+** Customization
 
-#+begin_src emacs-lisp
-  (with-eval-after-load 'eglot
-    (let* ((info (lsp-installer-jdtls-command-info))
-           (cmd (cons '(java-mode java-ts-mode)
-                      (append (list (cdr (assoc :executable info)))
-                              (cdr (assoc :args info))))))
-      (add-to-list 'eglot-server-programs cmd)))
-#+end_src
+#+BEGIN_SRC emacs-lisp
+;; Change installation directory (default: ~/.emacs.d/language-servers)
+(setq lsp-installer-install-dir "~/my-language-servers")
 
-* Customization
+;; Use custom server definitions file
+(setq lsp-installer-servers-file "~/my-servers.eld")
+#+END_SRC
 
-#+begin_src emacs-lisp
-  (setopt lsp-server-install-dir "~/.emacs.d/language-servers") ;; Language server installation directory
-  (setopt lsp-installer-servers-file "~/.emacs.d/language-servers/servers.eld") ;; Server configuration file
-#+end_src
+** Integration Examples
 
-* FAQ
+*** With Eglot
 
-** Q. Cannot install server
-A. Please check if required commands (=npm=, =pip=, =go=, =dotnet=, =curl=, =wget=, etc.) are in PATH.
+#+BEGIN_SRC emacs-lisp
+;; JDTLS integration
+(with-eval-after-load 'eglot
+  (let* ((info (lsp-installer-jdtls-command-info))
+         (cmd (cons '(java-mode java-ts-mode)
+                    (append (list (cdr (assoc :executable info)))
+                            (cdr (assoc :args info))))))
+    (add-to-list 'eglot-server-programs cmd)))
+#+END_SRC
 
-** Q. Want to add a server
-A. Please add a definition in the unified format to =servers.eld=. See the configuration format section below.
+*** With LSP Mode
 
-** Q. Want to install from package managers other than those mentioned above
-A. Please create an issue. We will consider support.
+Language servers installed by =lsp-installer= work automatically with lsp-mode since they're added to =exec-path=.
 
-* License
+** Requirements
+
+Required tools for installation methods:
+- =npm=: Node.js and npm
+- =pip=: Python and pip3
+- =go=: Go compiler
+- =gem=: Ruby and gem
+- =dotnet=: .NET SDK
+- =github/binary=: curl or wget, tar, unzip
+
+** FAQ
+
+*Q: Installation fails?*
+Ensure required tools are in PATH (npm, pip, go, etc.).
+
+*Q: Want to add a server?*
+Add server definition to =servers.eld= using the configuration format above.
+
+*Q: Server not found after installation?*
+Run =M-x lsp-installer-setup= to refresh =exec-path=.
+
+** License
+
 MIT License
-
-* Contributing
-Bug reports and feature requests are welcome. Feel free to submit fixes and PRs as well.

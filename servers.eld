@@ -7,7 +7,6 @@
 ;; :install-method - Installation method: "npm", "pip", "go", "gem", "github", "binary", "dotnet"
 ;; :source - Package name, GitHub repo, or URL depending on install method
 ;; :executable - Executable name/path (always required)
-;; :version - Package version (optional)
 ;; :options - Method-specific options (optional)
 ;; :path-dirs - List of directories to add to exec-path (relative to server install dir, required)
 ;; :lsp-config - LSP configuration

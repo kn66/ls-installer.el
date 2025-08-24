@@ -263,14 +263,11 @@
 
 ;;; Installation methods - consolidated and simplified
 
-(defun lsp-installer--install-npm (server-name source version)
-  "Install npm package SOURCE for SERVER-NAME with optional VERSION."
+(defun lsp-installer--install-npm (server-name source)
+  "Install npm package SOURCE for SERVER-NAME."
   (let* ((server-dir
           (lsp-installer--get-server-install-dir server-name))
-         (package-spec
-          (if version
-              (format "%s@%s" source version)
-            source))
+         (package-spec source)
          (npm-exe (lsp-installer--executable-find 'npm)))
     (unless npm-exe
       (lsp-installer--error "npm not found in PATH"))
@@ -294,14 +291,11 @@
           (lsp-installer--error "npm install failed (exit code: %d)"
                                 exit-code))))))
 
-(defun lsp-installer--install-pip (server-name source version)
-  "Install pip package SOURCE for SERVER-NAME with optional VERSION."
+(defun lsp-installer--install-pip (server-name source)
+  "Install pip package SOURCE for SERVER-NAME."
   (let* ((server-dir
           (lsp-installer--get-server-install-dir server-name))
-         (package-spec
-          (if version
-              (format "%s==%s" source version)
-            source))
+         (package-spec source)
          (pip-exe (lsp-installer--executable-find 'pip))
          (python-exe
           (or (executable-find "python3") (executable-find "python")))
@@ -363,8 +357,8 @@
           (lsp-installer--error "go install failed (exit code: %d)"
                                 exit-code))))))
 
-(defun lsp-installer--install-gem (server-name source version)
-  "Install Ruby gem SOURCE for SERVER-NAME with optional VERSION."
+(defun lsp-installer--install-gem (server-name source)
+  "Install Ruby gem SOURCE for SERVER-NAME."
   (let* ((server-dir
           (lsp-installer--get-server-install-dir server-name))
          (bin-dir (expand-file-name "bin" server-dir))
@@ -381,10 +375,6 @@
         (lsp-installer--error
          "gem executable test failed (exit code: %d). gem may not be working properly."
          test-exit-code)))
-    ;; Add version argument if specified
-    (when version
-      (setq install-args
-            (append install-args (list "--version" version))))
     ;; Add install directory arguments
     (lsp-installer--ensure-directory bin-dir)
     (setq install-args
@@ -421,8 +411,8 @@
         (when (buffer-live-p output-buffer)
           (kill-buffer output-buffer))))))
 
-(defun lsp-installer--install-dotnet (server-name source _version)
-  "Install .NET tool SOURCE for SERVER-NAME with optional VERSION."
+(defun lsp-installer--install-dotnet (server-name source)
+  "Install .NET tool SOURCE for SERVER-NAME."
   (let* ((server-dir
           (lsp-installer--get-server-install-dir server-name))
          (tools-dir (expand-file-name "tools" server-dir))
@@ -692,7 +682,6 @@
   (let* ((method (plist-get config :install-method))
          (source (plist-get config :source))
          (executable (plist-get config :executable))
-         (version (plist-get config :version))
          (options (plist-get config :options)))
     ;; Auto-cleanup: remove existing installation if present
     (when (lsp-installer--server-installed-p server-name)
@@ -709,15 +698,15 @@
      server-name
      (cond
       ((string= method "npm")
-       (lsp-installer--install-npm server-name source version))
+       (lsp-installer--install-npm server-name source))
       ((string= method "pip")
-       (lsp-installer--install-pip server-name source version))
+       (lsp-installer--install-pip server-name source))
       ((string= method "go")
        (lsp-installer--install-go server-name source))
       ((string= method "gem")
-       (lsp-installer--install-gem server-name source version))
+       (lsp-installer--install-gem server-name source))
       ((string= method "dotnet")
-       (lsp-installer--install-dotnet server-name source version))
+       (lsp-installer--install-dotnet server-name source))
       ((string= method "github")
        (lsp-installer--install-github server-name source executable
                                       options))
