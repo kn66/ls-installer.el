@@ -443,20 +443,38 @@
    ;; ZIP archives
    ((string-match-p "\\.zip" archive)
     (let ((unzip-exe (lsp-installer--executable-find 'unzip)))
-      (unless unzip-exe
-        (lsp-installer--error "unzip not found"))
-      (let ((exit-code
-             (call-process unzip-exe
-                           nil
-                           "*lsp-installer*"
-                           t
-                           "-o"
-                           archive
-                           "-d"
-                           target-dir)))
-        (unless (= exit-code 0)
-          (lsp-installer--error "unzip failed (exit code: %d)"
-                                exit-code)))))
+      (cond
+       ;; Use unzip if available
+       (unzip-exe
+        (let ((exit-code
+               (call-process unzip-exe
+                             nil
+                             "*lsp-installer*"
+                             t
+                             "-o"
+                             archive
+                             "-d"
+                             target-dir)))
+          (unless (= exit-code 0)
+            (lsp-installer--error "unzip failed (exit code: %d)"
+                                  exit-code))))
+       ;; Fallback to PowerShell on Windows
+       ((eq system-type 'windows-nt)
+        (let
+            ((exit-code
+              (call-process
+               "powershell"
+               nil "*lsp-installer*" t "-Command"
+               (format
+                "Expand-Archive -Path '%s' -DestinationPath '%s' -Force"
+                archive target-dir))))
+          (unless (= exit-code 0)
+            (lsp-installer--error
+             "PowerShell zip extraction failed (exit code: %d)"
+             exit-code))))
+       ;; No extraction method available
+       (t
+        (lsp-installer--error "unzip not found")))))
    (t
     (lsp-installer--error "Unsupported archive format: %s" archive))))
 
