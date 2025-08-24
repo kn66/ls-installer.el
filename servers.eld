@@ -4,7 +4,7 @@
 ;; Unified format for all servers:
 ;; :name - Server identifier
 ;; :description - Human readable description
-;; :install-method - Installation method: "npm", "pip", "go", "github", "binary", "dotnet"
+;; :install-method - Installation method: "npm", "pip", "go", "gem", "github", "binary", "dotnet"
 ;; :source - Package name, GitHub repo, or URL depending on install method
 ;; :executable - Executable name/path (always required)
 ;; :version - Package version (optional)
@@ -325,4 +325,173 @@
    :lsp-config
    ( :server-id 'fortls
      :major-modes '(fortran-mode f90-mode)
-     :priority 0)))
+     :priority 0))
+
+ ( :name "intelephense"
+   :description "PHP language server"
+   :install-method "npm"
+   :source "intelephense"
+   :executable "intelephense"
+   :lsp-config
+   ( :server-id 'intelephense
+     :major-modes '(php-mode)
+     :priority 0))
+
+ ( :name "haskell-language-server"
+   :description "Haskell language server"
+   :install-method "github"
+   :source "haskell/haskell-language-server"
+   :executable "haskell-language-server"
+   :options (:strip-components 1)
+   :lsp-config
+   ( :server-id 'haskell-ls
+     :major-modes '(haskell-mode)
+     :priority 0))
+
+ ( :name "elixir-ls"
+   :description "Elixir language server"
+   :install-method "github"
+   :source "elixir-lsp/elixir-ls"
+   :executable "language_server.sh"
+   :options (:strip-components 1)
+   :lsp-config
+   ( :server-id 'elixir-ls
+     :major-modes '(elixir-mode)
+     :priority 0))
+
+ ( :name "kotlin-language-server"
+   :description "Kotlin language server"
+   :install-method "github"
+   :source "fwcd/kotlin-language-server"
+   :executable "bin/kotlin-language-server"
+   :options (:strip-components 1)
+   :lsp-config
+   ( :server-id 'kotlin-ls
+     :major-modes '(kotlin-mode)
+     :priority 0))
+
+ ( :name "metals"
+   :description "Scala language server"
+   :install-method "github"
+   :source "scalameta/metals"
+   :executable "metals"
+   :options (:strip-components 0)
+   :lsp-config
+   ( :server-id 'metals
+     :major-modes '(scala-mode)
+     :priority 0))
+
+ ( :name "dockerfile-language-server-nodejs"
+   :description "Dockerfile language server"
+   :install-method "npm"
+   :source "dockerfile-language-server-nodejs"
+   :executable "docker-langserver"
+   :lsp-config
+   ( :server-id 'dockerfile-ls
+     :major-modes '(dockerfile-mode)
+     :priority 0))
+
+ ( :name "taplo"
+   :description "TOML language server"
+   :install-method "github"
+   :source "tamasfe/taplo"
+   :executable "taplo"
+   :options (:strip-components 0)
+   :lsp-config
+   ( :server-id 'taplo
+     :major-modes '(toml-mode toml-ts-mode)
+     :priority 0))
+
+ ( :name "terraform-ls"
+   :description "Terraform language server"
+   :install-method "github"
+   :source "hashicorp/terraform-ls"
+   :executable "terraform-ls"
+   :options (:strip-components 0)
+   :lsp-config
+   ( :server-id 'terraform-ls
+     :major-modes '(terraform-mode)
+     :priority 0))
+
+ ( :name "ansible-language-server"
+   :description "Ansible language server"
+   :install-method "npm"
+   :source "@ansible/ansible-language-server"
+   :executable "ansible-language-server"
+   :lsp-config
+   ( :server-id 'ansible-ls
+     :major-modes '(yaml-mode)
+     :priority 1))
+
+ ( :name "marksman"
+   :description "Markdown language server"
+   :install-method "github"
+   :source "artempyanykh/marksman"
+   :executable "marksman"
+   :options (:strip-components 0)
+   :lsp-config
+   ( :server-id 'marksman
+     :major-modes '(markdown-mode)
+     :priority 0))
+
+ ( :name "vscode-eslint-language-server"
+   :description "ESLint language server"
+   :install-method "npm"
+   :source "vscode-langservers-extracted"
+   :executable "vscode-eslint-language-server"
+   :lsp-config
+   ( :server-id 'eslint-ls
+     :major-modes '(js-mode js-ts-mode typescript-mode typescript-ts-mode)
+     :priority 1))
+
+ ( :name "emmet-ls"
+   :description "Emmet language server for HTML/CSS"
+   :install-method "npm"
+   :source "emmet-ls"
+   :executable "emmet-ls"
+   :lsp-config
+   ( :server-id 'emmet-ls
+     :major-modes '(html-mode web-mode mhtml-mode css-mode scss-mode)
+     :priority 1))
+
+ ( :name "prisma-language-server"
+   :description "Prisma language server"
+   :install-method "npm"
+   :source "@prisma/language-server"
+   :executable "prisma-language-server"
+   :lsp-config
+   ( :server-id 'prisma-ls
+     :major-modes '(prisma-mode)
+     :priority 0))
+
+ ( :name "graphql-language-service-cli"
+   :description "GraphQL language server"
+   :install-method "npm"
+   :source "graphql-language-service-cli"
+   :executable "graphql-lsp"
+   :lsp-config
+   ( :server-id 'graphql-ls
+     :major-modes '(graphql-mode)
+     :priority 0))
+
+ ( :name "sql-language-server"
+   :description "SQL language server"
+   :install-method "npm"
+   :source "sql-language-server"
+   :executable "sql-language-server"
+   :lsp-config
+   ( :server-id 'sql-ls
+     :major-modes '(sql-mode)
+     :priority 0))
+
+ ( :name "solargraph"
+   :description "Ruby language server"
+   :install-method "gem"
+   :source "solargraph"
+   :executable "solargraph"
+   :lsp-config
+   ( :server-id 'solargraph
+     :major-modes '(ruby-mode ruby-ts-mode)
+     :priority 0))
+
+)

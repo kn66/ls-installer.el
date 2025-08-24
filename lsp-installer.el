@@ -18,7 +18,7 @@
 ;;
 ;; Features:
 ;; - Unified configuration format for all servers
-;; - Multiple installation methods: npm, pip, go, github, binary, dotnet
+;; - Multiple installation methods: npm, pip, go, gem, github, binary, dotnet
 ;; - Simple error handling and validation
 ;; - Interactive commands with completion
 ;; - Automatic path management
@@ -66,6 +66,7 @@
     (pip . "pip3")
     (go . "go")
     (dotnet . "dotnet")
+    (gem . "gem")
     (curl . "curl")
     (wget . "wget")
     (tar . "tar")
@@ -121,6 +122,39 @@
   (when (file-directory-p directory)
     (let ((files (directory-files directory nil "^[^.]")))
       (null files))))
+
+(defun lsp-installer--move-executables-to-bin (extract-dir bin-dir)
+  "Move executable files from EXTRACT-DIR root and nested dirs to BIN-DIR."
+  (when (file-directory-p extract-dir)
+    (let ((moved-count 0)
+          (search-dirs (list extract-dir)))
+      ;; Add common nested binary directories to search
+      (dolist (nested-dir '("server/bin" "bin" "Scripts"))
+        (let ((nested-path (expand-file-name nested-dir extract-dir)))
+          (when (file-directory-p nested-path)
+            (push nested-path search-dirs))))
+      ;; Search all directories for executables
+      (dolist (search-dir search-dirs)
+        (when (file-directory-p search-dir)
+          (dolist (file (directory-files search-dir nil "^[^.]"))
+            (let ((full-path (expand-file-name file search-dir)))
+              (when (and (file-regular-p full-path)
+                         (file-executable-p full-path)
+                         ;; Only move files that look like executables
+                         (or (string-match-p "\\.exe\\'" file)
+                             (string-match-p "\\.bat\\'" file)
+                             (not (string-match-p "\\." file))))
+                (let ((bin-path (expand-file-name file bin-dir)))
+                  (unless (file-exists-p bin-path)
+                    (copy-file full-path bin-path)
+                    (when (not (string= search-dir extract-dir))
+                      ;; Only delete if we're copying from a nested directory
+                      (delete-file full-path))
+                    (cl-incf moved-count))))))))
+      (when (> moved-count 0)
+        (lsp-installer--message
+         "Moved %d executable(s) to bin directory"
+         moved-count)))))
 
 ;;; Configuration management
 
@@ -178,7 +212,8 @@
       (lsp-installer--error "Server %s: incomplete configuration"
                             server-name))
     (unless (member
-             method '("npm" "pip" "go" "dotnet" "binary" "github"))
+             method
+             '("npm" "pip" "go" "dotnet" "gem" "binary" "github"))
       (lsp-installer--error "Server %s: unsupported method %s"
                             server-name
                             method))
@@ -348,6 +383,64 @@
           (lsp-installer--error "go install failed (exit code: %d)"
                                 exit-code))))))
 
+(defun lsp-installer--install-gem (server-name source version)
+  "Install Ruby gem SOURCE for SERVER-NAME with optional VERSION."
+  (let* ((server-dir
+          (lsp-installer--get-server-install-dir server-name))
+         (bin-dir (expand-file-name "bin" server-dir))
+         (gem-exe (lsp-installer--executable-find 'gem))
+         (install-args (list "install" source)))
+    (unless gem-exe
+      (lsp-installer--error "gem not found in PATH"))
+    ;; Debug: show which gem executable we found
+    (lsp-installer--message "Found gem executable: %s" gem-exe)
+    ;; Test gem executable before proceeding
+    (let ((test-exit-code
+           (call-process gem-exe nil nil nil "--version")))
+      (unless (= test-exit-code 0)
+        (lsp-installer--error
+         "gem executable test failed (exit code: %d). gem may not be working properly."
+         test-exit-code)))
+    (lsp-installer--ensure-directory bin-dir)
+    ;; Add version argument if specified
+    (when version
+      (setq install-args
+            (append install-args (list "--version" version))))
+    ;; Add install directory arguments
+    (setq install-args
+          (append
+           install-args
+           (list "--install-dir" server-dir "--bindir" bin-dir)))
+    ;; Log the command being executed for debugging
+    (lsp-installer--message "Executing: %s %s"
+                            gem-exe
+                            (mapconcat 'identity install-args " "))
+    ;; Create a temporary buffer to capture output
+    (let ((output-buffer
+           (generate-new-buffer "*gem-install-output*")))
+      (unwind-protect
+          (let ((exit-code
+                 (apply #'call-process
+                        gem-exe
+                        nil
+                        output-buffer
+                        t
+                        install-args)))
+            (unless (= exit-code 0)
+              ;; Show the actual gem command output for debugging
+              (let ((output
+                     (with-current-buffer output-buffer
+                       (buffer-string))))
+                (lsp-installer--error
+                 "gem install failed (exit code: %d)\nCommand: %s %s\nOutput:\n%s"
+                 exit-code
+                 gem-exe
+                 (mapconcat 'identity install-args " ")
+                 output))))
+        ;; Always cleanup the temporary buffer
+        (when (buffer-live-p output-buffer)
+          (kill-buffer output-buffer))))))
+
 (defun lsp-installer--install-dotnet (server-name source _version)
   "Install .NET tool SOURCE for SERVER-NAME with optional VERSION."
   (let* ((server-dir
@@ -496,7 +589,7 @@
     ;; OS scoring
     (cond
      ((eq system-type 'windows-nt)
-      (if (string-match-p "win\\|windows" name)
+      (if (string-match-p "win\\|windows\\|mingw" name)
           (cl-incf score 10)))
      ((eq system-type 'darwin)
       (if (string-match-p "osx\\|darwin\\|mac" name)
@@ -538,15 +631,16 @@
              (assets (cdr (assq 'assets release-data)))
              ;; Find best asset using scoring
              (best-asset
-              (cl-reduce
-               (lambda (a b)
-                 (if (> (lsp-installer--score-asset
-                         (cdr (assq 'name a)) server-name)
-                        (lsp-installer--score-asset
-                         (cdr (assq 'name b)) server-name))
-                     a
-                   b))
-               (append assets nil))))
+              (when (and assets (> (length assets) 0))
+                (cl-reduce
+                 (lambda (a b)
+                   (if (> (lsp-installer--score-asset
+                           (cdr (assq 'name a)) server-name)
+                          (lsp-installer--score-asset
+                           (cdr (assq 'name b)) server-name))
+                       a
+                     b))
+                 (append assets nil)))))
         (kill-buffer)
         (unless best-asset
           (lsp-installer--error "No suitable asset found for %s"
@@ -590,6 +684,9 @@
               (progn
                 (lsp-installer--extract-archive temp-file extract-dir
                                                 strip-components)
+                ;; Copy executables from root to bin if they're not in bin
+                (lsp-installer--move-executables-to-bin
+                 extract-dir bin-dir)
                 ;; Handle executable setup
                 (when executable
                   (let ((exec-path
@@ -699,6 +796,8 @@
        (lsp-installer--install-pip server-name source version))
       ((string= method "go")
        (lsp-installer--install-go server-name source))
+      ((string= method "gem")
+       (lsp-installer--install-gem server-name source version))
       ((string= method "dotnet")
        (lsp-installer--install-dotnet server-name source version))
       ((string= method "github")
