@@ -183,7 +183,8 @@
   (let* ((server-dir (lsp-installer--get-server-install-dir server-name))
          (bin-paths (list (expand-file-name "bin" server-dir)
                          (expand-file-name "node_modules/.bin" server-dir)
-                         (expand-file-name "tools" server-dir)))
+                         (expand-file-name "tools" server-dir)
+                         (expand-file-name "eclipse.jdt.ls/bin" server-dir)))
          (added 0))
     (dolist (path bin-paths)
       (when (and (file-directory-p path)
@@ -305,10 +306,12 @@
   (lsp-installer--ensure-directory target-dir)
   (cond
    ;; TAR archives
-   ((string-match-p "\\.tar\\.(gz|xz)\\|tgz" archive)
+   ((or (string-match-p "\\.tar\\.gz\\'" archive)
+         (string-match-p "\\.tar\\.xz\\'" archive)
+         (string-match-p "\\.tgz\\'" archive))
     (let* ((tar-exe (lsp-installer--executable-find 'tar))
            (compression (if (string-match-p "xz" archive) "J" "z"))
-           (args `("-x" ,(concat compression "f") ,archive "-C" ,target-dir)))
+           (args `(,(concat "-x" compression "f") ,archive "-C" ,target-dir)))
       (unless tar-exe (lsp-installer--error "tar not found"))
       (when strip-components
         (setq args (append args (list "--strip-components" (number-to-string strip-components)))))
@@ -394,7 +397,10 @@
           (lsp-installer--ensure-directory server-dir)
           (lsp-installer--ensure-directory bin-dir)
           (lsp-installer--download-file url temp-file)
-          (if (string-match-p "\\.(?:tar\\.|zip)" filename)
+          (if (or (string-match-p "\\.tar\\.gz\\'" filename)
+                  (string-match-p "\\.tar\\.xz\\'" filename)
+                  (string-match-p "\\.tgz\\'" filename)
+                  (string-match-p "\\.zip\\'" filename))
               ;; Archive - extract it
               (progn
                 (lsp-installer--extract-archive temp-file extract-dir strip-components)
@@ -578,6 +584,15 @@
 
 ;;; Integration helpers
 
+(defun lsp-installer-jdtls-command-info ()
+  "Get jdtls command information for eglot configuration."
+  (when (lsp-installer--server-installed-p "jdtls")
+    (let* ((executable (lsp-installer-get-server-executable-path "jdtls"))
+           (workspace-dir (expand-file-name ".cache/jdtls-workspace" (getenv "HOME"))))
+      (when executable
+        `((:executable . ,executable)
+          (:args . ()))))))
+
 (defun lsp-installer-get-server-executable-path (server-name)
   "Get the full path to SERVER-NAME's executable."
   (when (lsp-installer--server-installed-p server-name)
@@ -585,13 +600,13 @@
            (executable (plist-get config :executable))
            (server-dir (lsp-installer--get-server-install-dir server-name))
            (bin-paths (list (expand-file-name "bin" server-dir)
-                           (expand-file-name "node_modules/.bin" server-dir)
-                           (expand-file-name "tools" server-dir))))
+                            (expand-file-name "node_modules/.bin" server-dir)
+                            (expand-file-name "tools" server-dir))))
       (when executable
         (or (cl-some (lambda (path)
-                      (let ((full-path (expand-file-name executable path)))
-                        (when (file-executable-p full-path) full-path)))
-                    bin-paths)
+                       (let ((full-path (expand-file-name executable path)))
+                         (when (file-executable-p full-path) full-path)))
+                     bin-paths)
             (let ((full-path (expand-file-name executable server-dir)))
               (when (file-executable-p full-path) full-path))
             (executable-find executable))))))

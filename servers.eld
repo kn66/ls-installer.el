@@ -189,7 +189,7 @@
    :description "Java language server"
    :install-method "binary"
    :source "https://download.eclipse.org/jdtls/milestones/1.40.0/jdt-language-server-1.40.0-202409261450.tar.gz"
-   :executable "bin/jdtls"
+   :executable "eclipse.jdt.ls/bin/jdtls"
    :options (:target-subdir "eclipse.jdt.ls" :strip-components 0)
    :lsp-config
    ( :server-id 'jdtls
