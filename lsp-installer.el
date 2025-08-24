@@ -134,6 +134,15 @@
         (setq lsp-installer--servers-cache (read (current-buffer))))))
   lsp-installer--servers-cache)
 
+;;;###autoload
+(defun lsp-installer-reload-config ()
+  "Reload server configuration from file."
+  (interactive)
+  (setq lsp-installer--servers-cache nil)
+  (lsp-installer--load-config)
+  (lsp-installer--message "Configuration reloaded from %s"
+                          lsp-installer-servers-file))
+
 (defun lsp-installer--get-server-config (server-name)
   "Get configuration for SERVER-NAME."
   (let ((servers (lsp-installer--load-config)))
