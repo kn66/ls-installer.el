@@ -243,6 +243,24 @@
                               added
                               server-name))))
 
+(defun lsp-installer--remove-from-exec-path (server-name)
+  "Remove SERVER-NAME's bin directories from exec-path."
+  (let* ((server-dir
+          (lsp-installer--get-server-install-dir server-name))
+         (config (lsp-installer--get-server-config server-name))
+         (path-dirs (plist-get config :path-dirs))
+         (bin-paths
+          (lsp-installer--expand-path-dirs server-dir path-dirs))
+         (removed 0))
+    (dolist (path bin-paths)
+      (when (member path exec-path)
+        (setq exec-path (remove path exec-path))
+        (cl-incf removed)))
+    (when (> removed 0)
+      (lsp-installer--message "Removed %d path(s) for %s"
+                              removed
+                              server-name))))
+
 ;;; Installation methods - consolidated and simplified
 
 (defun lsp-installer--install-npm (server-name source version)
@@ -753,6 +771,7 @@
     (let ((server-dir
            (lsp-installer--get-server-install-dir server-name)))
       (when (file-directory-p server-dir)
+        (lsp-installer--remove-from-exec-path server-name)
         (delete-directory server-dir t)
         (lsp-installer--message "Successfully uninstalled %s"
                                 server-name)))))
