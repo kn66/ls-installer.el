@@ -696,8 +696,10 @@
          (options (plist-get config :options)))
     ;; Auto-cleanup: remove existing installation if present
     (when (lsp-installer--server-installed-p server-name)
-      (lsp-installer--message "Removing existing %s installation..." server-name)
-      (let ((server-dir (lsp-installer--get-server-install-dir server-name)))
+      (lsp-installer--message "Removing existing %s installation..."
+                              server-name)
+      (let ((server-dir
+             (lsp-installer--get-server-install-dir server-name)))
         (when (file-directory-p server-dir)
           (delete-directory server-dir t))))
     (lsp-installer--message "Installing %s via %s..."
