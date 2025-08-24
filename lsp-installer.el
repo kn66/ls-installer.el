@@ -71,6 +71,7 @@
     (wget . "wget")
     (tar . "tar")
     (unzip . "unzip")
+    (7z . "7z")
     (java . "java"))
   "Alist of executable names.")
 
@@ -514,7 +515,8 @@
            exit-code)))))
    ;; ZIP archives
    ((string-match-p "\\.zip" archive)
-    (let ((unzip-exe (lsp-installer--executable-find 'unzip)))
+    (let ((unzip-exe (lsp-installer--executable-find 'unzip))
+          (7z-exe (lsp-installer--executable-find '7z)))
       (cond
        ;; Use unzip if available
        (unzip-exe
@@ -530,6 +532,21 @@
           (unless (= exit-code 0)
             (lsp-installer--error "unzip failed (exit code: %d)"
                                   exit-code))))
+       ;; Use 7zip if available
+       (7z-exe
+        (let ((exit-code
+               (call-process 7z-exe
+                             nil
+                             "*lsp-installer*"
+                             t
+                             "x"
+                             archive
+                             (concat "-o" target-dir)
+                             "-y")))
+          (unless (= exit-code 0)
+            (lsp-installer--error
+             "7z extraction failed (exit code: %d)"
+             exit-code))))
        ;; Fallback to PowerShell on Windows
        ((eq system-type 'windows-nt)
         (let
@@ -546,7 +563,8 @@
              exit-code))))
        ;; No extraction method available
        (t
-        (lsp-installer--error "unzip not found")))))
+        (lsp-installer--error
+         "No zip extraction tool found (unzip, 7z, or PowerShell)")))))
    (t
     (lsp-installer--error "Unsupported archive format: %s" archive))))
 
