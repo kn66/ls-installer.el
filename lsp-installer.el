@@ -348,7 +348,7 @@
           (lsp-installer--error "go install failed (exit code: %d)"
                                 exit-code))))))
 
-(defun lsp-installer--install-dotnet (server-name source version)
+(defun lsp-installer--install-dotnet (server-name source _version)
   "Install .NET tool SOURCE for SERVER-NAME with optional VERSION."
   (let* ((server-dir
           (lsp-installer--get-server-install-dir server-name))
@@ -744,7 +744,7 @@
                  (format "Server %s already installed. Reinstall? "
                          server-name))))
       (lsp-installer--message "Installation cancelled")
-      (return))
+      (cl-return-from lsp-installer-install-server))
     (lsp-installer--dispatch-installation server-name config)))
 
 ;;;###autoload
@@ -846,11 +846,8 @@
 (defun lsp-installer-jdtls-command-info ()
   "Get jdtls command information for eglot configuration."
   (when (lsp-installer--server-installed-p "jdtls")
-    (let* ((executable
-            (lsp-installer-get-server-executable-path "jdtls"))
-           (workspace-dir
-            (expand-file-name ".cache/jdtls-workspace"
-                              (getenv "HOME"))))
+    (let ((executable
+           (lsp-installer-get-server-executable-path "jdtls")))
       (when executable
         `((:executable . ,executable) (:args . ()))))))
 
