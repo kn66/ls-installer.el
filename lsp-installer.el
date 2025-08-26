@@ -31,6 +31,7 @@
 ;; - `lsp-installer-install-server'   - Install a server
 ;; - `lsp-installer-uninstall-server' - Remove a server
 ;; - `lsp-installer-update-server'    - Update a server
+;; - `lsp-installer-update-all-servers' - Update all installed servers
 ;; - `lsp-installer-list-servers'     - Show available/installed servers
 
 ;;; Code:
@@ -808,6 +809,41 @@
         (delete-directory server-dir t)))
     (lsp-installer--dispatch-installation server-name config)
     (lsp-installer--message "Successfully updated %s" server-name)))
+
+;;;###autoload
+(defun lsp-installer-update-all-servers ()
+  "Update all installed language servers."
+  (interactive)
+  (let ((installed (lsp-installer--list-installed-servers)))
+    (if (null installed)
+        (lsp-installer--message "No language servers are installed")
+      (when (y-or-n-p
+             (format "Update %d installed server(s)? "
+                     (length installed)))
+        (lsp-installer--message "Updating %d servers..."
+                                (length installed))
+        (dolist (server-name installed)
+          (condition-case err
+              (progn
+                (lsp-installer--message "Updating %s..." server-name)
+                (let ((config
+                       (lsp-installer--get-server-config
+                        server-name)))
+                  (lsp-installer--validate-config server-name config)
+                  (let ((server-dir
+                         (lsp-installer--get-server-install-dir
+                          server-name)))
+                    (when (file-directory-p server-dir)
+                      (delete-directory server-dir t)))
+                  (lsp-installer--dispatch-installation
+                   server-name config)
+                  (lsp-installer--message "Successfully updated %s"
+                                          server-name)))
+            (error
+             (lsp-installer--message "Failed to update %s: %s"
+                                     server-name
+                                     (error-message-string err)))))
+        (lsp-installer--message "Finished updating all servers")))))
 
 ;;;###autoload
 (defun lsp-installer-list-servers ()

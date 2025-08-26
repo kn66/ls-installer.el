@@ -32,6 +32,9 @@ Installs, updates, and manages 51+ language servers with zero configuration. All
 ;; Install a language server
 M-x lsp-installer-install-server RET typescript-language-server RET
 
+;; Update all installed language servers at once
+M-x lsp-installer-update-all-servers
+
 ;; View all available servers
 M-x lsp-installer-list-servers
 #+END_SRC
@@ -43,6 +46,7 @@ M-x lsp-installer-list-servers
 | =lsp-installer-install-server=      | Install a language server               |
 | =lsp-installer-uninstall-server=    | Uninstall a language server             |
 | =lsp-installer-update-server=       | Update a language server                |
+| =lsp-installer-update-all-servers=  | Update all installed language servers   |
 | =lsp-installer-list-servers=        | List all available/installed servers    |
 | =lsp-installer-setup=               | Add installed servers to exec-path      |
 
